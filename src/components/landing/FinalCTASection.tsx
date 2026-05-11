@@ -17,12 +17,12 @@ export default function FinalCTASection() {
           >
             Start for free →
           </Link>
-          <a
-            href="#"
+          <Link
+            href="/book-demo"
             className="border-2 border-white text-white font-semibold text-[15px] px-7 py-[14px] rounded-lg hover:bg-white/10 transition-colors"
           >
             Book a demo
-          </a>
+          </Link>
         </div>
       </div>
     </section>

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import {
   ShoppingBag, TrendingUp, CreditCard, CheckCircle2,
-  Check, X,
+  Check, X, Download, Copy, FileText, Send,
 } from "lucide-react";
 import { getOrders, updateOrderStatus } from "@/lib/data/orders";
 import type { UIOrder as Order, UIOrderStatus as OrderStatus } from "@/lib/data/orders";
@@ -108,6 +108,406 @@ function StatusTimeline({ status }: { status: OrderStatus }) {
   );
 }
 
+// ── Merchant name (stub — will come from auth context later) ──────────────────
+
+const MOCK_MERCHANT_NAME = "Fashion by Amina";
+
+// ── PDF receipt/invoice HTML generator ───────────────────────────────────────
+
+function generateDocHTML(order: Order, type: "receipt" | "invoice"): string {
+  const sub = order.items.reduce((s, i) => s + i.qty * i.price, 0);
+  const tot = sub + order.deliveryFee;
+  const title = type === "invoice" ? "INVOICE" : "RECEIPT";
+  const paymentLink = `https://pay.merchat.io/${order.ref.toLowerCase()}`;
+
+  const rows = order.items.map(item => `
+    <tr>
+      <td>${item.name}</td>
+      <td style="text-align:center">${item.qty}</td>
+      <td style="text-align:right">₦${item.price.toLocaleString()}</td>
+      <td style="text-align:right;font-weight:600">₦${(item.qty * item.price).toLocaleString()}</td>
+    </tr>`).join("");
+
+  const paymentLinkSection = type === "invoice" ? `
+    <div class="payment-link">
+      <div class="label">Payment Link</div>
+      <div class="link-box">${paymentLink}</div>
+      <div class="hint">Share this link with the customer to collect payment online.</div>
+    </div>` : "";
+
+  const paidRow = type === "receipt" ? `
+    <div class="prow">
+      <span class="plabel">Status</span>
+      <span class="pval ${order.paid ? "paid" : ""}">${order.paid ? "Paid ✓" : "Pending"}</span>
+    </div>` : "";
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>${title} · ${order.ref}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#111827;background:#fff}
+  .page{max-width:580px;margin:0 auto;padding:48px 40px}
+  .hd{text-align:center;margin-bottom:28px}
+  .hd-name{font-size:22px;font-weight:700;color:#182E47}
+  .hd-type{font-size:11px;color:#9CA3AF;text-transform:uppercase;letter-spacing:.07em;margin-top:3px}
+  hr.dash{border:none;border-top:1px dashed #E5E7EB;margin:20px 0}
+  .meta{display:grid;grid-template-columns:1fr 1fr;gap:14px 24px;margin-bottom:24px}
+  .span2{grid-column:1/-1}
+  .mlabel{font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px}
+  .mval{font-size:13px;font-weight:600;color:#182E47}
+  .msub{font-size:12px;color:#6B7280;margin-top:1px}
+  table{width:100%;border-collapse:collapse;border:1px solid #E5E7EB;border-radius:8px;overflow:hidden;margin-bottom:14px}
+  thead tr{background:#F9FAFB}
+  th{padding:9px 14px;font-size:10px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #E5E7EB;text-align:left}
+  td{padding:9px 14px;font-size:13px;border-bottom:1px solid #F3F4F6;color:#6B7280}
+  td:first-child{color:#182E47;font-weight:500}
+  tr:last-child td{border-bottom:none}
+  .totals{padding:0 2px;margin-bottom:20px}
+  .trow{display:flex;justify-content:space-between;font-size:13px;color:#6B7280;padding:3px 0}
+  .tfinal{display:flex;justify-content:space-between;font-size:16px;font-weight:700;color:#182E47;padding-top:10px;border-top:1px solid #E5E7EB;margin-top:6px}
+  .tfinal span:last-child{color:#D5652B}
+  .pbox{background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:14px;margin-bottom:20px}
+  .prow{display:flex;justify-content:space-between;font-size:13px;padding:2px 0}
+  .plabel{color:#6B7280}
+  .pval{font-weight:600;color:#182E47}
+  .pval.paid{color:#16A34A}
+  .payment-link{margin-top:4px}
+  .label{font-size:10px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px}
+  .link-box{font-size:13px;font-family:monospace;background:#F3F4F6;border:1px solid #E5E7EB;border-radius:6px;padding:9px 12px;color:#374151;word-break:break-all}
+  .hint{font-size:11px;color:#9CA3AF;margin-top:6px}
+  @media print{body{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="hd">
+    <div class="hd-name">${MOCK_MERCHANT_NAME}</div>
+    <div class="hd-type">Official ${title.toLowerCase()}</div>
+  </div>
+  <hr class="dash">
+  <div class="meta">
+    <div>
+      <div class="mlabel">${title} No.</div>
+      <div class="mval">${order.ref}</div>
+    </div>
+    <div>
+      <div class="mlabel">Date</div>
+      <div class="mval">${order.createdAt}</div>
+    </div>
+    <div class="span2">
+      <div class="mlabel">Billed To</div>
+      <div class="mval">${order.customer.name}</div>
+      <div class="msub">${order.customer.phone}</div>
+      ${order.customer.address ? `<div class="msub">${order.customer.address}</div>` : ""}
+    </div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th style="text-align:center">Qty</th>
+        <th style="text-align:right">Unit price</th>
+        <th style="text-align:right">Amount</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="totals">
+    <div class="trow"><span>Subtotal</span><span>₦${sub.toLocaleString()}</span></div>
+    <div class="trow"><span>Delivery fee</span><span>${order.deliveryFee === 0 ? "Free" : `₦${order.deliveryFee.toLocaleString()}`}</span></div>
+    <div class="tfinal"><span>Total</span><span>₦${tot.toLocaleString()}</span></div>
+  </div>
+  <div class="pbox">
+    <div class="prow"><span class="plabel">Payment method</span><span class="pval">${order.paymentMethod === "delivery" ? "Pay on Delivery" : "Pay Now"}</span></div>
+    ${paidRow}
+  </div>
+  ${paymentLinkSection}
+</div>
+</body>
+</html>`;
+}
+
+// ── Copy-link button ──────────────────────────────────────────────────────────
+
+function CopyLinkButton({ link }: { link: string }) {
+  const [copied, setCopied] = useState(false);
+  function handleCopy() {
+    navigator.clipboard.writeText(link).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+  return (
+    <button
+      onClick={handleCopy}
+      className="shrink-0 h-10 px-3 rounded-lg border border-[#D1D5DB] text-[13px] font-medium text-brand-navy hover:bg-[#F3F4F6] transition-colors flex items-center gap-1.5"
+    >
+      {copied
+        ? <><Check size={14} className="text-[#16A34A]" strokeWidth={2.5} /> Copied</>
+        : <><Copy size={14} strokeWidth={1.5} /> Copy</>}
+    </button>
+  );
+}
+
+// ── Receipt / Invoice modal ───────────────────────────────────────────────────
+
+function ReceiptModal({
+  order,
+  type,
+  onClose,
+}: {
+  order: Order;
+  type: "receipt" | "invoice";
+  onClose: () => void;
+}) {
+  const sub = subtotal(order);
+  const tot = orderTotal(order);
+  const isInvoice = type === "invoice";
+  const paymentLink = `https://pay.merchat.io/${order.ref.toLowerCase()}`;
+
+  useEffect(() => {
+    const fn = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", fn);
+    return () => window.removeEventListener("keydown", fn);
+  }, [onClose]);
+
+  function handleDownload() {
+    const w = window.open("", "_blank");
+    if (!w) return;
+    w.document.write(generateDocHTML(order, type));
+    w.document.close();
+    w.focus();
+    setTimeout(() => { w.print(); }, 250);
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center sm:p-4 bg-black/60"
+      onClick={onClose}
+    >
+      <div
+        className="w-full sm:max-w-[560px] bg-white sm:rounded-2xl flex flex-col overflow-hidden h-full sm:h-auto sm:max-h-[90vh]"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#E5E7EB] shrink-0">
+          <h2 className="text-[16px] font-bold text-brand-navy">
+            {isInvoice ? "Invoice" : "Receipt"}
+          </h2>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleDownload}
+              className="flex items-center gap-1.5 h-9 px-3 rounded-lg border border-[#D1D5DB] text-[13px] font-medium text-brand-navy hover:bg-[#F3F4F6] transition-colors"
+            >
+              <Download size={14} strokeWidth={1.5} />
+              Download PDF
+            </button>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-[#9CA3AF] hover:text-brand-navy hover:bg-[#F3F4F6] transition-colors"
+            >
+              <X size={18} strokeWidth={1.5} />
+            </button>
+          </div>
+        </div>
+
+        {/* Document body */}
+        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5">
+
+          {/* Branding */}
+          <div className="text-center py-1">
+            <p className="text-[20px] font-bold text-brand-navy">{MOCK_MERCHANT_NAME}</p>
+            <p className="text-[11px] text-[#9CA3AF] uppercase tracking-widest mt-1">
+              Official {isInvoice ? "invoice" : "receipt"}
+            </p>
+          </div>
+
+          <div className="border-t border-dashed border-[#E5E7EB]" />
+
+          {/* Meta */}
+          <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-[13px]">
+            <div>
+              <p className="text-[10px] font-semibold text-[#9CA3AF] uppercase tracking-wide mb-0.5">
+                {isInvoice ? "Invoice" : "Receipt"} No.
+              </p>
+              <p className="font-semibold text-brand-navy">{order.ref}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold text-[#9CA3AF] uppercase tracking-wide mb-0.5">Date</p>
+              <p className="text-brand-navy">{order.createdAt}</p>
+            </div>
+            <div className="col-span-2">
+              <p className="text-[10px] font-semibold text-[#9CA3AF] uppercase tracking-wide mb-0.5">Billed To</p>
+              <p className="font-semibold text-brand-navy">{order.customer.name}</p>
+              <p className="text-[#6B7280] mt-0.5">{order.customer.phone}</p>
+              {order.customer.address && (
+                <p className="text-[#6B7280] mt-0.5">{order.customer.address}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="border-t border-[#E5E7EB]" />
+
+          {/* Items table */}
+          <div className="border border-[#E5E7EB] rounded-xl overflow-hidden">
+            <table className="w-full text-[13px]">
+              <thead>
+                <tr className="bg-[#F9FAFB] border-b border-[#E5E7EB]">
+                  <th className="text-left px-4 py-2.5 text-[10px] font-semibold text-[#6B7280] uppercase tracking-wide">Item</th>
+                  <th className="text-center px-3 py-2.5 text-[10px] font-semibold text-[#6B7280] uppercase tracking-wide">Qty</th>
+                  <th className="text-right px-4 py-2.5 text-[10px] font-semibold text-[#6B7280] uppercase tracking-wide">Unit price</th>
+                  <th className="text-right px-4 py-2.5 text-[10px] font-semibold text-[#6B7280] uppercase tracking-wide">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {order.items.map((item, i) => (
+                  <tr key={i} className="border-b border-[#F3F4F6] last:border-0">
+                    <td className="px-4 py-3 text-brand-navy font-medium">{item.name}</td>
+                    <td className="px-3 py-3 text-center text-[#6B7280]">{item.qty}</td>
+                    <td className="px-4 py-3 text-right text-[#6B7280]">{fmt(item.price)}</td>
+                    <td className="px-4 py-3 text-right font-semibold text-brand-navy">{fmt(item.qty * item.price)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Totals */}
+          <div className="space-y-1.5 px-0.5">
+            <div className="flex justify-between text-[13px] text-[#6B7280]">
+              <span>Subtotal</span><span>{fmt(sub)}</span>
+            </div>
+            <div className="flex justify-between text-[13px] text-[#6B7280]">
+              <span>Delivery fee</span>
+              <span>{order.deliveryFee === 0 ? "Free" : fmt(order.deliveryFee)}</span>
+            </div>
+            <div className="flex justify-between text-[16px] font-bold text-brand-navy pt-2 border-t border-[#E5E7EB]">
+              <span>Total</span>
+              <span className="text-brand-orange">{fmt(tot)}</span>
+            </div>
+          </div>
+
+          {/* Payment info box */}
+          <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl px-4 py-3 space-y-1.5 text-[13px]">
+            <div className="flex justify-between">
+              <span className="text-[#6B7280]">Payment method</span>
+              <span className="font-medium text-brand-navy">
+                {order.paymentMethod === "delivery" ? "Pay on Delivery" : "Pay Now"}
+              </span>
+            </div>
+            {!isInvoice && (
+              <div className="flex justify-between">
+                <span className="text-[#6B7280]">Status</span>
+                <span className={`font-semibold ${order.paid ? "text-[#16A34A]" : "text-[#D97706]"}`}>
+                  {order.paid ? "Paid ✓" : "Pending"}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Payment link (invoice only) */}
+          {isInvoice && (
+            <div>
+              <p className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide mb-2">
+                Payment Link
+              </p>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 bg-[#F3F4F6] border border-[#E5E7EB] rounded-lg px-3 py-2.5 text-[13px] font-mono text-[#374151] truncate">
+                  {paymentLink}
+                </div>
+                <CopyLinkButton link={paymentLink} />
+              </div>
+              <p className="text-[11px] text-[#9CA3AF] mt-1.5">
+                Share this link with the customer to collect payment.
+              </p>
+            </div>
+          )}
+
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Send receipt / invoice dialog ─────────────────────────────────────────────
+
+function SendDialog({
+  order,
+  type,
+  onDone,
+  onCancel,
+}: {
+  order: Order;
+  type: "receipt" | "invoice";
+  onDone: () => void;
+  onCancel: () => void;
+}) {
+  const [sent, setSent] = useState(false);
+
+  useEffect(() => {
+    const fn = (e: KeyboardEvent) => { if (e.key === "Escape") onCancel(); };
+    window.addEventListener("keydown", fn);
+    return () => window.removeEventListener("keydown", fn);
+  }, [onCancel]);
+
+  function handleSend() {
+    // Stub: in production this would call a WhatsApp sending API
+    setSent(true);
+    setTimeout(onDone, 1500);
+  }
+
+  const label = type === "invoice" ? "Invoice" : "Receipt";
+
+  return (
+    <div
+      className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-black/40"
+      onClick={sent ? undefined : onCancel}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-[340px]"
+        onClick={e => e.stopPropagation()}
+      >
+        {sent ? (
+          <div className="text-center py-2">
+            <div className="w-12 h-12 rounded-full bg-[#DCFCE7] flex items-center justify-center mx-auto mb-3">
+              <Check size={22} className="text-[#16A34A]" strokeWidth={2.5} />
+            </div>
+            <p className="text-[16px] font-bold text-brand-navy">{label} sent!</p>
+            <p className="text-[13px] text-[#6B7280] mt-1">Sent to {order.customer.phone}</p>
+          </div>
+        ) : (
+          <>
+            <div className="w-11 h-11 rounded-full bg-[#DCFCE7] flex items-center justify-center mb-4">
+              <Send size={18} className="text-[#16A34A]" strokeWidth={1.5} />
+            </div>
+            <h3 className="text-[17px] font-bold text-brand-navy mb-1">Send {label}?</h3>
+            <p className="text-[13px] text-[#6B7280] leading-relaxed mb-1">
+              {label} for <span className="font-semibold text-brand-navy">{order.ref}</span> will be sent to:
+            </p>
+            <p className="text-[15px] font-bold text-brand-navy mb-5">{order.customer.phone}</p>
+            <div className="flex gap-3">
+              <button
+                onClick={onCancel}
+                className="flex-1 h-10 rounded-lg border border-[#D1D5DB] text-brand-navy text-[14px] font-medium hover:bg-[#F3F4F6] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSend}
+                className="flex-1 h-10 rounded-lg bg-[#16A34A] text-white text-[14px] font-semibold hover:bg-[#15803D] transition-colors"
+              >
+                Send via WhatsApp
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Advance confirmation dialog ───────────────────────────────────────────────
 
 function AdvanceDialog({
@@ -164,6 +564,9 @@ function OrderDetailModal({
   const sub = subtotal(order);
   const tot = orderTotal(order);
   const next = NEXT[order.status];
+  const [receiptOpen, setReceiptOpen] = useState(false);
+  const [sendOpen, setSendOpen] = useState(false);
+  const docType: "receipt" | "invoice" = order.paid ? "receipt" : "invoice";
 
   return (
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4 bg-black/50" onClick={onClose}>
@@ -262,23 +665,55 @@ function OrderDetailModal({
         </div>
 
         {/* Action buttons */}
-        <div className="shrink-0 px-5 py-4 border-t border-[#E5E7EB] flex gap-3">
-          {next && (
+        <div className="shrink-0 border-t border-[#E5E7EB]">
+          {/* Receipt / Invoice row */}
+          <div className="px-5 pt-3 pb-2 flex items-center gap-2 border-b border-[#F3F4F6] flex-wrap">
             <button
-              onClick={() => onAdvance(order.id)}
-              className="flex-1 h-11 rounded-xl bg-brand-orange text-white text-[14px] font-semibold hover:bg-[#B54E20] transition-colors"
+              onClick={() => setSendOpen(true)}
+              className="flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-[#DCFCE7] text-[#15803D] text-[13px] font-semibold hover:bg-[#BBF7D0] transition-colors"
             >
-              Advance to {next}
+              <Send size={13} strokeWidth={2} />
+              Send {order.paid ? "Receipt" : "Invoice"}
             </button>
-          )}
-          <button
-            onClick={onClose}
-            className="flex-1 h-11 rounded-xl border border-[#D1D5DB] text-brand-navy text-[14px] font-medium hover:bg-[#F3F4F6] transition-colors"
-          >
-            Message customer
-          </button>
+            <button
+              onClick={() => setReceiptOpen(true)}
+              className="flex items-center gap-1.5 h-9 px-3.5 rounded-lg border border-[#D1D5DB] text-brand-navy text-[13px] font-medium hover:bg-[#F3F4F6] transition-colors"
+            >
+              <FileText size={13} strokeWidth={1.5} />
+              View {order.paid ? "Receipt" : "Invoice"}
+            </button>
+          </div>
+          {/* Primary actions row */}
+          <div className="px-5 py-3 flex gap-3">
+            {next && (
+              <button
+                onClick={() => onAdvance(order.id)}
+                className="flex-1 h-10 rounded-xl bg-brand-orange text-white text-[14px] font-semibold hover:bg-[#B54E20] transition-colors"
+              >
+                Advance to {next}
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="flex-1 h-10 rounded-xl border border-[#D1D5DB] text-brand-navy text-[14px] font-medium hover:bg-[#F3F4F6] transition-colors"
+            >
+              Message customer
+            </button>
+          </div>
         </div>
       </div>
+
+      {receiptOpen && (
+        <ReceiptModal order={order} type={docType} onClose={() => setReceiptOpen(false)} />
+      )}
+      {sendOpen && (
+        <SendDialog
+          order={order}
+          type={docType}
+          onDone={() => setSendOpen(false)}
+          onCancel={() => setSendOpen(false)}
+        />
+      )}
     </div>
   );
 }

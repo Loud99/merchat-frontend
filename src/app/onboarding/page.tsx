@@ -8,6 +8,7 @@ import {
   Eye, EyeOff, CheckCircle2, Loader2, AlertCircle, Copy, Check,
   ImagePlus, Plus, X, ChevronDown, Rocket, Upload,
 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -1005,6 +1006,44 @@ function Step7({ data }: { data: FormData }) {
   );
 }
 
+// ── Saved screen ─────────────────────────────────────────────────────────────
+
+function SavedScreen({ token, email, onBack }: { token: string; email: string; onBack: () => void }) {
+  const [origin, setOrigin] = useState("");
+  useEffect(() => { setOrigin(window.location.origin); }, []);
+  const resumeLink = origin ? `${origin}/onboarding/resume/${token}` : `/onboarding/resume/${token}`;
+
+  return (
+    <div className="flex flex-col items-center text-center gap-5 py-4">
+      <div className="w-16 h-16 rounded-full bg-[#DCFCE7] flex items-center justify-center">
+        <CheckCircle2 size={32} className="text-[#16A34A]" strokeWidth={2} />
+      </div>
+      <div>
+        <h2 className="text-[22px] font-bold text-brand-navy mb-2">Your progress has been saved.</h2>
+        <p className="text-[15px] text-[#6B7280] leading-relaxed">
+          Resume your setup anytime using this link:
+        </p>
+      </div>
+      <div className="w-full bg-[#F3F4F6] rounded-lg px-4 py-3 flex items-center gap-2">
+        <span className="text-[12px] text-brand-navy truncate flex-1 text-left">{resumeLink || "Generating link…"}</span>
+        {resumeLink && <CopyButton text={resumeLink} />}
+      </div>
+      <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-[#DCFCE7] border border-[#16A34A]/30 text-[13px] text-[#16A34A] font-medium w-full justify-center">
+        <Check size={15} strokeWidth={2.5} />
+        We&apos;ve sent this link to {email}
+      </div>
+      <p className="text-[12px] text-[#9CA3AF]">This link expires in 7 days.</p>
+      <button
+        type="button"
+        onClick={onBack}
+        className="text-[13px] text-[#6B7280] hover:text-brand-navy transition-colors"
+      >
+        ← Back to setup
+      </button>
+    </div>
+  );
+}
+
 // ── Main wizard ───────────────────────────────────────────────────────────────
 
 function OnboardingWizard() {
@@ -1012,12 +1051,62 @@ function OnboardingWizard() {
   const fromWhatsapp = searchParams.get("source") === "whatsapp";
   const waPhone = searchParams.get("phone") ?? "";
 
-  const [step, setStep] = useState(1);
-  const [form, setForm] = useState<FormData>(() => ({
-    ...DEFAULT_FORM,
-    phone: waPhone,
-  }));
-  const [provisioningDone, setProvisioningDone] = useState(false);
+  // Read saved progress from sessionStorage (written by the resume redirect route)
+  const [restored] = useState<{ step: number; form: Partial<FormData> } | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = sessionStorage.getItem("onboarding_restore");
+      if (!raw) return null;
+      sessionStorage.removeItem("onboarding_restore");
+      return JSON.parse(raw);
+    } catch { return null; }
+  });
+
+  const [step, setStep] = useState(restored?.step ?? 1);
+  const [form, setForm] = useState<FormData>(() =>
+    restored ? { ...DEFAULT_FORM, ...(restored.form as FormData) } : { ...DEFAULT_FORM, phone: waPhone }
+  );
+  const [provisioningDone, setProvisioningDone] = useState((restored?.step ?? 1) > 2);
+  const [savingLater, setSavingLater] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [savedScreen, setSavedScreen] = useState<{ token: string; email: string } | null>(null);
+
+  async function saveAndContinueLater() {
+    if (!form.email) {
+      setSaveError("Please enter your email address first so we know where to send the link.");
+      return;
+    }
+    setSavingLater(true);
+    setSaveError(null);
+    try {
+      const supabase = createClient();
+      const token = (crypto.randomUUID() + crypto.randomUUID()).replace(/-/g, "");
+      const formToSave = {
+        ...form,
+        logoPreview: null,
+        products: form.products.map(({ preview: _p, ...rest }) => rest),
+      };
+      const { error } = await supabase.from("onboarding_sessions").insert({
+        token,
+        email: form.email,
+        step,
+        form_data: formToSave,
+      });
+      if (error) throw error;
+      setSavedScreen({ token, email: form.email });
+      const resumeLink = `${window.location.origin}/onboarding/resume/${token}`;
+      const subject = encodeURIComponent("Complete your Merchat setup");
+      const body = encodeURIComponent(
+        `Hi${form.ownerName ? " " + form.ownerName : ""},\n\nYour Merchat setup is saved. Resume where you left off:\n\n${resumeLink}\n\nThis link expires in 7 days.\n\n— The Merchat Team`
+      );
+      window.open(`mailto:${form.email}?subject=${subject}&body=${body}`, "_blank");
+    } catch (err) {
+      console.error("Failed to save progress:", err);
+      setSaveError("Something went wrong saving your progress. Please try again.");
+    } finally {
+      setSavingLater(false);
+    }
+  }
 
   function patch(key: keyof FormData, value: unknown) {
     setForm(prev => {
@@ -1088,14 +1177,31 @@ function OnboardingWizard() {
             Step {step} of 7 — {STEP_LABELS[step - 1]}
           </p>
         </div>
-        <Link href="/login" className="shrink-0 text-[13px] text-[#6B7280] hover:text-brand-navy transition-colors whitespace-nowrap">
-          Save &amp; exit
-        </Link>
+        {step < 7 && (
+          <button
+            type="button"
+            onClick={saveAndContinueLater}
+            disabled={savingLater}
+            className="shrink-0 inline-flex items-center gap-1.5 text-[13px] text-[#6B7280] hover:text-brand-navy transition-colors disabled:opacity-40 whitespace-nowrap"
+          >
+            {savingLater && <Loader2 size={12} className="animate-spin" />}
+            Save and complete later
+          </button>
+        )}
       </header>
 
       {/* Body */}
       <div className="flex-1 flex items-start lg:items-center justify-center pt-[80px] pb-8 px-4">
         <div className="w-full max-w-[560px] bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.08)] px-6 pt-8 pb-6 lg:px-10 lg:pt-10">
+
+          {savedScreen ? (
+            <SavedScreen
+              token={savedScreen.token}
+              email={savedScreen.email}
+              onBack={() => setSavedScreen(null)}
+            />
+          ) : (
+          <>
 
           {step === 1 && (
             <Step1
@@ -1130,8 +1236,16 @@ function OnboardingWizard() {
           {step === 6 && <Step6 data={form} />}
           {step === 7 && <Step7 data={form} />}
 
+          {/* Save error */}
+          {saveError && (
+            <div className="flex items-start gap-2 mt-6 px-3 py-2.5 rounded-lg bg-[#FEF2F2] border border-[#FCA5A5] text-[13px] text-[#EF4444]">
+              <AlertCircle size={15} className="shrink-0 mt-0.5" />
+              <span>{saveError}</span>
+            </div>
+          )}
+
           {/* Bottom button row */}
-          <div className="flex items-center justify-between mt-8 pt-5 border-t border-[#E5E7EB] gap-3">
+          <div className="flex items-center justify-between mt-6 pt-5 border-t border-[#E5E7EB] gap-3">
             {step > 1 && step < 7 ? (
               <button
                 type="button"
@@ -1152,6 +1266,9 @@ function OnboardingWizard() {
               {ctaLabel}
             </button>
           </div>
+
+          </>
+          )}
         </div>
       </div>
     </div>

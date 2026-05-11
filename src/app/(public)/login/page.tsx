@@ -3,7 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 // ── Google icon ───────────────────────────────────────────────────────────────
 function GoogleIcon() {
@@ -33,19 +35,24 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     if (!email || !password) {
-      setError("Incorrect email or password.");
+      setError("Please enter your email and password.");
       return;
     }
     setLoading(true);
-    // TODO: replace with real auth call
-    await new Promise((r) => setTimeout(r, 800));
+    const supabase = createClient();
+    const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
-    setError("Incorrect email or password.");
+    if (authError) {
+      setError("Incorrect email or password.");
+      return;
+    }
+    router.push("/dashboard");
   }
 
   const inputBase =

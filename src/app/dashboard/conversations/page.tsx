@@ -9,6 +9,7 @@ import {
   getConversations, insertMessage, updateConversationStatus,
 } from "@/lib/data/conversations";
 import type { UIThread as Thread, UIMessage as Message, UIThreadStatus as ThreadStatus } from "@/lib/data/conversations";
+import CustomerProfilePanel from "@/components/dashboard/CustomerProfilePanel";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -161,6 +162,7 @@ function ThreadView({
   onTooltipDismiss,
   onToggleMore,
   onMarkResolved,
+  onViewProfile,
 }: {
   thread: Thread;
   messages: Message[];
@@ -177,6 +179,7 @@ function ThreadView({
   onTooltipDismiss: () => void;
   onToggleMore: () => void;
   onMarkResolved: () => void;
+  onViewProfile: () => void;
 }) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -257,7 +260,10 @@ function ThreadView({
                 <button onClick={onMarkResolved} className="w-full text-left px-4 py-2.5 text-[14px] text-brand-navy hover:bg-[#F3F4F6] transition-colors">
                   Mark resolved
                 </button>
-                <button className="w-full text-left px-4 py-2.5 text-[14px] text-brand-navy hover:bg-[#F3F4F6] transition-colors">
+                <button
+                  onClick={() => { onToggleMore(); onViewProfile(); }}
+                  className="w-full text-left px-4 py-2.5 text-[14px] text-brand-navy hover:bg-[#F3F4F6] transition-colors"
+                >
                   View customer profile
                 </button>
               </div>
@@ -354,6 +360,7 @@ export default function ConversationsPage() {
   const [search, setSearch]     = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mobileView, setMobileView] = useState<"list" | "thread">("list");
+  const [profileOpen, setProfileOpen] = useState(false);
 
   // Per-thread overrides
   const [aiPausedMap, setAiPausedMap]       = useState<Record<string, boolean>>({});
@@ -414,6 +421,7 @@ export default function ConversationsPage() {
     setMobileView("thread");
     setMoreOpen(false);
     setReplyText("");
+    setProfileOpen(false);
   }
 
   function handleReplyChange(v: string) {
@@ -576,9 +584,18 @@ export default function ConversationsPage() {
             onTooltipDismiss={() => selectedId && setTooltipShown(prev => ({ ...prev, [selectedId]: false }))}
             onToggleMore={handleToggleMore}
             onMarkResolved={handleMarkResolved}
+            onViewProfile={() => setProfileOpen(true)}
           />
         ) : (
           <EmptyState />
+        )}
+
+        {profileOpen && selectedThread && (
+          <CustomerProfilePanel
+            customerName={selectedThread.customerName}
+            phone={selectedThread.phone}
+            onClose={() => setProfileOpen(false)}
+          />
         )}
       </div>
     </div>

@@ -8,7 +8,7 @@ import { Menu, X } from "lucide-react";
 const navLinks = [
   { label: "How it works", href: "#how-it-works" },
   { label: "Pricing", href: "#pricing" },
-  { label: "For Merchants", href: "#" },
+  { label: "Features", href: "/features" },
 ];
 
 export default function Navbar() {
@@ -55,7 +55,7 @@ export default function Navbar() {
 
           <div className="hidden lg:flex items-center gap-4">
             <Link
-              href="/auth/login"
+              href="/login"
               className="text-[15px] font-semibold text-brand-navy hover:opacity-70 transition-opacity"
             >
               Log in
@@ -96,7 +96,7 @@ export default function Navbar() {
             </button>
           </div>
           <div className="flex flex-col gap-1">
-            {[...navLinks, { label: "Log in", href: "/auth/login" }].map((l) => (
+            {[...navLinks, { label: "Log in", href: "/login" }].map((l) => (
               <a
                 key={l.label}
                 href={l.href}

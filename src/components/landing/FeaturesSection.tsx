@@ -170,8 +170,16 @@ function FeatureRow({ badge, title, body, visual, reverse }: FeatureRowProps) {
 
 export default function FeaturesSection() {
   return (
-    <section id="features" className="bg-white py-16 lg:py-24">
-      <div className="max-w-[1200px] mx-auto px-6">
+    <section id="features" className="relative bg-white py-16 lg:py-24 overflow-hidden">
+
+      {/* Decorative watermark logos */}
+      <img src="/images/icon-light.svg" aria-hidden="true" alt="" className="pointer-events-none select-none absolute -top-6 -left-10 w-64 opacity-[0.045]" style={{ transform: "rotate(15deg)" }} />
+      <img src="/images/icon-light.svg" aria-hidden="true" alt="" className="pointer-events-none select-none absolute top-1/4 -right-16 w-80 opacity-[0.035]" style={{ transform: "rotate(-20deg)" }} />
+      <img src="/images/icon-light.svg" aria-hidden="true" alt="" className="pointer-events-none select-none absolute top-1/2 left-1/3 w-48 opacity-[0.04]" style={{ transform: "rotate(45deg)" }} />
+      <img src="/images/icon-light.svg" aria-hidden="true" alt="" className="pointer-events-none select-none absolute bottom-1/4 -left-8 w-72 opacity-[0.05]" style={{ transform: "rotate(-10deg)" }} />
+      <img src="/images/icon-light.svg" aria-hidden="true" alt="" className="pointer-events-none select-none absolute -bottom-4 right-1/4 w-56 opacity-[0.04]" style={{ transform: "rotate(30deg)" }} />
+
+      <div className="relative z-10 max-w-[1200px] mx-auto px-6">
         <h2 className="text-[24px] lg:text-[32px] font-bold text-brand-navy mb-14 lg:mb-20">
           Everything your WhatsApp business needs.
         </h2>

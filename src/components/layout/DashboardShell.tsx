@@ -7,23 +7,27 @@ import { usePathname } from "next/navigation";
 import {
   MessageSquare, ShoppingBag, Package, BarChart2, Settings,
   Bell, Menu, X, LogOut, Bot, AlertCircle, ChevronDown,
-  ShoppingCart, CreditCard,
+  ShoppingCart, CreditCard, Wallet,
 } from "lucide-react";
 import { ReactNode } from "react";
 import {
   getNotifications, markNotificationRead, markAllNotificationsRead,
 } from "@/lib/data/notifications";
 import type { UINotification } from "@/lib/data/notifications";
+import TestAIModal from "@/components/dashboard/TestAIModal";
+import SupportButton from "@/components/dashboard/SupportButton";
 
 const NAV_LINKS = [
   { icon: MessageSquare, label: "Conversations", href: "/dashboard/conversations" },
   { icon: ShoppingBag,   label: "Orders",        href: "/dashboard/orders" },
   { icon: Package,       label: "Inventory",     href: "/dashboard/inventory" },
   { icon: BarChart2,     label: "Analytics",     href: "/dashboard/analytics" },
+  { icon: Wallet,        label: "Finances",      href: "/dashboard/finances" },
   { icon: Settings,      label: "Settings",      href: "/dashboard/settings" },
 ];
 
-const MOCK_MERCHANT_NAME = "Fashion by Amina";
+const MOCK_MERCHANT_NAME  = "Fashion by Amina";
+const MOCK_MERCHANT_EMAIL = "amabibid400@gmail.com";
 
 function notifIcon(type: UINotification["type"]) {
   switch (type) {
@@ -49,7 +53,7 @@ function getInitials(name: string) {
 
 // ── Sidebar ────────────────────────────────────────────────────────────────────
 
-function SidebarContent({ onClose }: { onClose?: () => void }) {
+function SidebarContent({ onClose, onTestAI }: { onClose?: () => void; onTestAI: () => void }) {
   const pathname = usePathname();
 
   return (
@@ -103,7 +107,10 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
 
       {/* Bottom: Test AI + account + wordmark */}
       <div className="px-3 pb-5 border-t border-white/10 pt-4 space-y-3">
-        <button className="w-full flex items-center justify-center gap-2 h-9 rounded-lg border border-white/30 text-white/80 text-[13px] font-medium hover:bg-white/[0.08] transition-colors">
+        <button
+          onClick={() => { onClose?.(); onTestAI(); }}
+          className="w-full flex items-center justify-center gap-2 h-9 rounded-lg border border-white/30 text-white/80 text-[13px] font-medium hover:bg-white/[0.08] transition-colors"
+        >
           <Bot size={15} strokeWidth={1.5} />
           Test Your AI
         </button>
@@ -145,6 +152,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
   const [drawerOpen, setDrawerOpen]         = useState(false);
   const [avatarOpen, setAvatarOpen]         = useState(false);
   const [notifOpen, setNotifOpen]           = useState(false);
+  const [testAIOpen, setTestAIOpen]         = useState(false);
   const [notifications, setNotifications]   = useState<UINotification[]>([]);
   const [showProvBanner, setShowProvBanner] = useState(false);
   const pathname = usePathname();
@@ -182,7 +190,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-[#F3F4F6]">
       {/* ── Desktop sidebar (fixed) ─────────────────────────────────────────── */}
       <aside className="hidden lg:flex flex-col fixed left-0 top-0 bottom-0 w-60 bg-brand-navy z-40">
-        <SidebarContent />
+        <SidebarContent onTestAI={() => setTestAIOpen(true)} />
       </aside>
 
       {/* ── Mobile sidebar drawer ──────────────────────────────────────────── */}
@@ -197,7 +205,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
             drawerOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
-          <SidebarContent onClose={() => setDrawerOpen(false)} />
+          <SidebarContent onClose={() => setDrawerOpen(false)} onTestAI={() => setTestAIOpen(true)} />
         </div>
       </div>
 
@@ -347,6 +355,18 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
           );
         })}
       </nav>
+
+      {testAIOpen && (
+        <TestAIModal
+          storeName={MOCK_MERCHANT_NAME}
+          onClose={() => setTestAIOpen(false)}
+        />
+      )}
+
+      <SupportButton
+        merchantName={MOCK_MERCHANT_NAME}
+        merchantEmail={MOCK_MERCHANT_EMAIL}
+      />
     </div>
   );
 }

@@ -25,22 +25,22 @@ const INJECTED_STYLES = `
      PHYSICAL SKEUOMORPHIC MATERIALS (Restored 3D Depth)
   ---------------------------------------------------------------------- */
 
-  /* OUTSIDE THE CARD: Theme-aware text (Shadow in Light Mode, Glow in Dark Mode) */
+  /* Always-dark background — hardcoded white text */
   .text-3d-matte {
-      color: var(--color-foreground);
+      color: #FFFFFF;
       text-shadow:
-          0 10px 30px color-mix(in srgb, var(--color-foreground) 20%, transparent),
-          0 2px 4px color-mix(in srgb, var(--color-foreground) 10%, transparent);
+          0 10px 30px rgba(255, 255, 255, 0.15),
+          0 2px 4px rgba(255, 255, 255, 0.08);
   }
   .text-silver-matte {
-      background: linear-gradient(180deg, var(--color-foreground) 0%, color-mix(in srgb, var(--color-foreground) 40%, transparent) 100%);
+      background: linear-gradient(180deg, #FFFFFF 0%, rgba(255, 255, 255, 0.45) 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
       transform: translateZ(0);
       filter:
-          drop-shadow(0px 10px 20px color-mix(in srgb, var(--color-foreground) 15%, transparent))
-          drop-shadow(0px 2px 4px color-mix(in srgb, var(--color-foreground) 10%, transparent));
+          drop-shadow(0px 10px 20px rgba(255, 255, 255, 0.12))
+          drop-shadow(0px 2px 4px rgba(255, 255, 255, 0.08));
   }
   /* INSIDE THE CARD: Hardcoded Silver/White for the dark background, deep rich shadows */
   .text-card-silver-matte {
@@ -147,6 +147,56 @@ const INJECTED_STYLES = `
       stroke-dasharray: 402;
       stroke-dashoffset: 402;
       stroke-linecap: round;
+  }
+  /* CTA Buttons — always on dark background */
+  .btn-cta-primary {
+      background: linear-gradient(180deg, #E8722F 0%, #C4541A 100%);
+      color: #FFFFFF;
+      box-shadow:
+          0 0 0 1px rgba(255,255,255,0.15),
+          0 2px 4px rgba(0,0,0,0.4),
+          0 12px 24px -4px rgba(213,101,43,0.45),
+          inset 0 1px 1px rgba(255,255,255,0.25),
+          inset 0 -3px 6px rgba(0,0,0,0.3);
+      transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+  .btn-cta-primary:hover {
+      transform: translateY(-3px);
+      box-shadow:
+          0 0 0 1px rgba(255,255,255,0.2),
+          0 6px 12px -2px rgba(213,101,43,0.3),
+          0 20px 32px -6px rgba(213,101,43,0.55),
+          inset 0 1px 1px rgba(255,255,255,0.25),
+          inset 0 -3px 6px rgba(0,0,0,0.3);
+  }
+  .btn-cta-primary:active {
+      transform: translateY(1px);
+      background: linear-gradient(180deg, #C4541A 0%, #A84316 100%);
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.1), 0 1px 2px rgba(0,0,0,0.3), inset 0 3px 6px rgba(0,0,0,0.3);
+  }
+  .btn-cta-secondary {
+      background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%);
+      color: #FFFFFF;
+      border: 1.5px solid rgba(255,255,255,0.35);
+      box-shadow:
+          0 2px 4px rgba(0,0,0,0.5),
+          0 12px 24px -4px rgba(0,0,0,0.7),
+          inset 0 1px 1px rgba(255,255,255,0.1);
+      transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+  .btn-cta-secondary:hover {
+      transform: translateY(-3px);
+      background: linear-gradient(180deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.04) 100%);
+      border-color: rgba(255,255,255,0.55);
+      box-shadow:
+          0 6px 12px -2px rgba(0,0,0,0.5),
+          0 20px 32px -6px rgba(0,0,0,0.8),
+          inset 0 1px 1px rgba(255,255,255,0.15);
+  }
+  .btn-cta-secondary:active {
+      transform: translateY(1px);
+      background: rgba(255,255,255,0.04);
+      box-shadow: inset 0 3px 6px rgba(0,0,0,0.4);
   }
 `;
 
@@ -293,10 +343,10 @@ export function CinematicHero({
     <div
       ref={containerRef}
       className={cn(
-        "relative w-screen h-screen overflow-hidden flex items-center justify-center bg-background text-foreground font-sans antialiased",
+        "relative w-screen h-screen overflow-hidden flex items-center justify-center font-sans antialiased",
         className
       )}
-      style={{ perspective: "1500px" }}
+      style={{ perspective: "1500px", backgroundColor: "#0a0f1e" }}
       {...props}
     >
       <style dangerouslySetInnerHTML={{ __html: INJECTED_STYLES }} />
@@ -318,20 +368,20 @@ export function CinematicHero({
         <h2 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 tracking-tight text-silver-matte">
           {ctaHeading}
         </h2>
-        <p className="text-muted-foreground text-lg md:text-xl mb-12 max-w-xl mx-auto font-light leading-relaxed">
+        <p className="text-white/65 text-lg md:text-xl mb-12 max-w-xl mx-auto font-light leading-relaxed">
           {ctaDescription}
         </p>
         <div className="flex flex-col sm:flex-row gap-6">
           <Link
             href="/onboarding"
-            className="btn-modern-light flex items-center justify-center gap-2 px-8 py-4 rounded-[1.25rem] text-lg font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            className="btn-cta-primary flex items-center justify-center gap-2 px-8 py-4 rounded-[1.25rem] text-lg font-bold focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 focus:ring-offset-[#0a0f1e]"
           >
             Start for free →
           </Link>
           <a
             href="#how-it-works"
             onClick={handleScrollToNext}
-            className="btn-modern-dark flex items-center justify-center gap-2 px-8 py-4 rounded-[1.25rem] text-lg font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-background"
+            className="btn-cta-secondary flex items-center justify-center gap-2 px-8 py-4 rounded-[1.25rem] text-lg font-bold focus:outline-none focus:ring-2 focus:ring-white/50 focus:ring-offset-2 focus:ring-offset-[#0a0f1e]"
           >
             See how it works
           </a>

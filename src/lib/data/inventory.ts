@@ -16,6 +16,7 @@ export interface InventoryProduct {
   active: boolean;
   images: string[];
   variants: { id: string; label: string; options: string[] }[];
+  payOnDelivery: boolean;
 }
 
 // ── Private helpers ───────────────────────────────────────────────────────────
@@ -24,7 +25,7 @@ async function fetchFullProduct(id: string): Promise<InventoryProduct> {
   const supabase = createClient();
   const { data: p } = await supabase
     .from("products")
-    .select("id, name, description, category, price, stock_quantity, is_in_stock, is_active")
+    .select("id, name, description, category, price, stock_quantity, is_in_stock, is_active, pay_on_delivery")
     .eq("id", id)
     .single();
 
@@ -44,6 +45,7 @@ async function fetchFullProduct(id: string): Promise<InventoryProduct> {
     stock: p.stock_quantity,
     outOfStock: !p.is_in_stock,
     active: p.is_active,
+    payOnDelivery: p.pay_on_delivery ?? false,
     images: (images ?? []).map((i: { url: string }) => i.url),
     variants: (variants ?? []).map((v: { id: string; label: string; options: string[] }) => ({
       id: v.id,
@@ -77,6 +79,7 @@ export async function saveProduct(data: {
   price: number;
   stock: number;
   outOfStock: boolean;
+  payOnDelivery: boolean;
   imageUrls: string[];
   variants: { label: string; options: string[] }[];
 }): Promise<InventoryProduct> {
@@ -92,6 +95,7 @@ export async function saveProduct(data: {
       price: data.price,
       stock_quantity: data.outOfStock ? 0 : data.stock,
       is_in_stock: !data.outOfStock && data.stock > 0,
+      pay_on_delivery: data.payOnDelivery,
     }).eq("id", productId);
 
     // Replace images
@@ -110,6 +114,7 @@ export async function saveProduct(data: {
         stock_quantity: data.outOfStock ? 0 : data.stock,
         is_in_stock: !data.outOfStock && data.stock > 0,
         is_active: true,
+        pay_on_delivery: data.payOnDelivery,
       })
       .select("id")
       .single();

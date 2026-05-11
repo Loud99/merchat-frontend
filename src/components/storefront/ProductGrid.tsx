@@ -309,9 +309,16 @@ function ProductCard({ product, primaryColour, waNumber, onOpen }: CardProps) {
         </button>
 
         {/* Price */}
-        <p className="text-[18px] font-bold mb-3" style={{ color: primaryColour }}>
+        <p className="text-[18px] font-bold mb-2" style={{ color: primaryColour }}>
           {formatNaira(product.price)}
         </p>
+
+        {/* Pay on delivery badge */}
+        {product.payOnDelivery && (
+          <span className="inline-block mb-2 text-[11px] font-medium text-[#92400E] bg-[#FEF3C7] border border-[#FCD34D] px-2 py-0.5 rounded-full">
+            Pay on delivery available
+          </span>
+        )}
 
         {/* Buttons */}
         <div className="flex flex-col gap-2">

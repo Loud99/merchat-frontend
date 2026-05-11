@@ -24,4 +24,5 @@ export interface Product {
   imageUrls: string[];
   inStock: boolean;
   variants: ProductVariant[];
+  payOnDelivery?: boolean;
 }

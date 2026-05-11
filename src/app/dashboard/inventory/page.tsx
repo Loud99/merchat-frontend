@@ -20,7 +20,7 @@ import {
 type StockFilter = "all" | "in_stock" | "low_stock" | "out_of_stock";
 type ViewMode = "grid" | "list";
 
-type Product = InventoryProduct & { aiEnabled: boolean; showInStorefront: boolean };
+type Product = InventoryProduct & { aiEnabled: boolean; showInStorefront: boolean; payOnDelivery: boolean };
 
 interface DrawerVariant {
   id: string;
@@ -43,6 +43,7 @@ interface DrawerForm {
   outOfStock: boolean;
   showInStorefront: boolean;
   aiEnabled: boolean;
+  payOnDelivery: boolean;
   images: DrawerImage[];
   urlInput: string;
   variants: DrawerVariant[];
@@ -65,13 +66,13 @@ function stockStatus(p: Product): StockFilter {
 }
 
 function toUiProduct(p: InventoryProduct): Product {
-  return { ...p, aiEnabled: true, showInStorefront: true };
+  return { ...p, aiEnabled: true, showInStorefront: true, payOnDelivery: p.payOnDelivery };
 }
 
 function emptyForm(): DrawerForm {
   return {
     name: "", description: "", category: "", price: "", stock: "",
-    outOfStock: false, showInStorefront: true, aiEnabled: true,
+    outOfStock: false, showInStorefront: true, aiEnabled: true, payOnDelivery: false,
     images: [], urlInput: "", variants: [],
   };
 }
@@ -81,7 +82,7 @@ function productToForm(p: Product): DrawerForm {
     name: p.name, description: p.description, category: p.category,
     price: String(p.price), stock: String(p.stock),
     outOfStock: p.outOfStock, showInStorefront: p.showInStorefront,
-    aiEnabled: p.aiEnabled,
+    aiEnabled: p.aiEnabled, payOnDelivery: p.payOnDelivery ?? false,
     images: p.images.map((url, i) => ({ id: `img-${i}`, url })),
     urlInput: "",
     variants: p.variants.map((v) => ({ ...v, tagInput: "" })),
@@ -675,6 +676,13 @@ function ProductDrawer({ form, setForm, isNew, saving, onSave, onClose, onDelete
                 </div>
                 <Toggle checked={form.aiEnabled} onChange={(v) => set("aiEnabled", v)} />
               </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[14px] font-medium text-brand-navy">Accept pay on delivery</p>
+                  <p className="text-[12px] text-[#6B7280]">Customers can pay cash when order arrives</p>
+                </div>
+                <Toggle checked={form.payOnDelivery} onChange={(v) => set("payOnDelivery", v)} />
+              </div>
             </div>
           </section>
 
@@ -833,6 +841,7 @@ export default function InventoryPage() {
         price: parseFloat(drawerForm.price) || 0,
         stock: parseInt(drawerForm.stock) || 0,
         outOfStock: drawerForm.outOfStock,
+        payOnDelivery: drawerForm.payOnDelivery,
         imageUrls,
         variants,
       });

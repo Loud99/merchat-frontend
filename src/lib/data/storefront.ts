@@ -21,7 +21,7 @@ export async function getStorefrontData(slug: string): Promise<{
   // All active products for this merchant
   const { data: productRows } = await supabase
     .from("products")
-    .select("id, name, description, price, category, is_in_stock")
+    .select("id, name, description, price, category, is_in_stock, pay_on_delivery")
     .eq("merchant_id", row.id)
     .eq("is_active", true)
     .order("created_at", { ascending: true });
@@ -48,6 +48,7 @@ export async function getStorefrontData(slug: string): Promise<{
         category: p.category ?? "",
         imageUrls: (images ?? []).map((i: { url: string }) => i.url),
         inStock: p.is_in_stock,
+        payOnDelivery: p.pay_on_delivery ?? false,
         variants: (variants ?? []).map((v: { label: string; options: string[] }) => ({
           label: v.label,
           options: v.options,
