@@ -42,7 +42,7 @@ function relativeTime(date: Date): string {
 }
 
 export async function getOrders(): Promise<UIOrder[]> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data: rows } = await supabase
     .from("orders")
@@ -99,7 +99,7 @@ export async function getOrders(): Promise<UIOrder[]> {
 }
 
 export async function updateOrderStatus(id: string, nextStatus: UIOrderStatus): Promise<void> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const updates: Record<string, string> = { status: UI_TO_DB[nextStatus] };
   if (nextStatus === "Paid") updates.payment_status = "paid";
   await supabase.from("orders").update(updates).eq("id", id);

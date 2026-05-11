@@ -49,7 +49,7 @@ function relativeTime(date: Date): string {
 }
 
 export async function getConversations(): Promise<UIThread[]> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data: convs } = await supabase
     .from("conversations")
@@ -103,7 +103,7 @@ export async function insertMessage(
   content: string,
   senderType: "merchant" | "customer" | "ai"
 ): Promise<void> {
-  const supabase = createClient();
+  const supabase = await createClient();
   await supabase.from("messages").insert({
     conversation_id: conversationId,
     sender_type: senderType,
@@ -122,7 +122,7 @@ export async function updateConversationStatus(
   conversationId: string,
   status: UIThreadStatus
 ): Promise<void> {
-  const supabase = createClient();
+  const supabase = await createClient();
   await supabase.from("conversations")
     .update({ ai_status: UI_TO_DB_STATUS[status] })
     .eq("id", conversationId);

@@ -8,7 +8,7 @@ export default async function ResumePage({
 }: {
   params: { token: string };
 }) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data } = await supabase
     .from("onboarding_sessions")

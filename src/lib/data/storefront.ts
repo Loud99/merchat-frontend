@@ -6,7 +6,7 @@ export async function getStorefrontData(slug: string): Promise<{
   merchant: Merchant;
   products: Product[];
 }> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   // Merchant by slug
   const { data: row } = await supabase

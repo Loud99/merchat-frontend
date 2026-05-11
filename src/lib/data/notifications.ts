@@ -25,7 +25,7 @@ function relativeTime(date: Date): string {
 }
 
 export async function getNotifications(): Promise<UINotification[]> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("notifications")
     .select("id, type, title, body, is_read, created_at, related_id")
@@ -45,12 +45,12 @@ export async function getNotifications(): Promise<UINotification[]> {
 }
 
 export async function markNotificationRead(id: string): Promise<void> {
-  const supabase = createClient();
+  const supabase = await createClient();
   await supabase.from("notifications").update({ is_read: true }).eq("id", id);
 }
 
 export async function markAllNotificationsRead(): Promise<void> {
-  const supabase = createClient();
+  const supabase = await createClient();
   await supabase.from("notifications")
     .update({ is_read: true })
     .eq("merchant_id", MERCHANT_ID)

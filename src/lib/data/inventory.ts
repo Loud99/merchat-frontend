@@ -22,7 +22,7 @@ export interface InventoryProduct {
 // ── Private helpers ───────────────────────────────────────────────────────────
 
 async function fetchFullProduct(id: string): Promise<InventoryProduct> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: p } = await supabase
     .from("products")
     .select("id, name, description, category, price, stock_quantity, is_in_stock, is_active, pay_on_delivery")
@@ -58,7 +58,7 @@ async function fetchFullProduct(id: string): Promise<InventoryProduct> {
 // ── Exported server actions ───────────────────────────────────────────────────
 
 export async function getProducts(): Promise<InventoryProduct[]> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data: rows } = await supabase
     .from("products")
@@ -83,7 +83,7 @@ export async function saveProduct(data: {
   imageUrls: string[];
   variants: { label: string; options: string[] }[];
 }): Promise<InventoryProduct> {
-  const supabase = createClient();
+  const supabase = await createClient();
   let productId = data.id;
 
   if (productId) {
@@ -141,12 +141,12 @@ export async function saveProduct(data: {
 }
 
 export async function deleteProduct(id: string): Promise<void> {
-  const supabase = createClient();
+  const supabase = await createClient();
   await supabase.from("products").delete().eq("id", id);
 }
 
 export async function toggleProductStatus(id: string, currentActive: boolean): Promise<void> {
-  const supabase = createClient();
+  const supabase = await createClient();
   await supabase.from("products").update({ is_active: !currentActive }).eq("id", id);
 }
 
@@ -155,7 +155,7 @@ export async function updateProductField(
   field: "price" | "stock",
   value: number
 ): Promise<void> {
-  const supabase = createClient();
+  const supabase = await createClient();
   if (field === "price") {
     await supabase.from("products").update({ price: value }).eq("id", id);
   } else {
@@ -177,7 +177,7 @@ export async function uploadProductImage(formData: FormData): Promise<string> {
   const ext = file.type === "image/jpeg" ? "jpg" : "png";
   const filename = `${MERCHANT_ID}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase.storage
     .from("product-images")
     .upload(filename, file, { contentType: file.type, upsert: false });
