@@ -1,4 +1,5 @@
-// Forgot password page — build in step 6
-export default function ForgotPasswordPage() {
-  return null;
+import { redirect } from "next/navigation";
+
+export default function AuthForgotPasswordRedirect() {
+  redirect("/forgot-password");
 }

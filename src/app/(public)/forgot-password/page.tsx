@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { MailCheck, ArrowLeft } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -26,12 +27,18 @@ export default function ForgotPasswordPage() {
     return () => clearInterval(id);
   }, [sendKey]);
 
+  async function sendReset() {
+    const supabase = createClient();
+    await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/auth/reset-password`,
+    });
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!email || loading) return;
     setLoading(true);
-    // TODO: call real password-reset API
-    await new Promise((r) => setTimeout(r, 800));
+    await sendReset();
     setLoading(false);
     setSubmitted(true);
     setSendKey((k) => k + 1);
@@ -40,7 +47,7 @@ export default function ForgotPasswordPage() {
   async function handleResend() {
     if (countdown > 0 || loading) return;
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 800));
+    await sendReset();
     setLoading(false);
     setSendKey((k) => k + 1);
   }

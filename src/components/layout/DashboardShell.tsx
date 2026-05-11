@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { usePathname } from "next/navigation";
 import {
   MessageSquare, ShoppingBag, Package, BarChart2, Settings,
@@ -53,7 +55,7 @@ function getInitials(name: string) {
 
 // ── Sidebar ────────────────────────────────────────────────────────────────────
 
-function SidebarContent({ onClose, onTestAI }: { onClose?: () => void; onTestAI: () => void }) {
+function SidebarContent({ onClose, onTestAI, onLogout }: { onClose?: () => void; onTestAI: () => void; onLogout: () => void }) {
   const pathname = usePathname();
 
   return (
@@ -120,7 +122,7 @@ function SidebarContent({ onClose, onTestAI }: { onClose?: () => void; onTestAI:
             {getInitials(MOCK_MERCHANT_NAME)}
           </div>
           <span className="flex-1 text-[13px] text-white/70 truncate">{MOCK_MERCHANT_NAME}</span>
-          <button aria-label="Log out" className="text-white/40 hover:text-white transition-colors">
+          <button aria-label="Log out" onClick={onLogout} className="text-white/40 hover:text-white transition-colors">
             <LogOut size={15} strokeWidth={1.5} />
           </button>
         </div>
@@ -156,6 +158,13 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
   const [notifications, setNotifications]   = useState<UINotification[]>([]);
   const [showProvBanner, setShowProvBanner] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handleLogout = useCallback(async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/");
+  }, [router]);
   const title = pageTitle(pathname);
   const avatarRef = useRef<HTMLDivElement>(null);
   const notifRef  = useRef<HTMLDivElement>(null);
@@ -190,7 +199,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-[#F3F4F6]">
       {/* ── Desktop sidebar (fixed) ─────────────────────────────────────────── */}
       <aside className="hidden lg:flex flex-col fixed left-0 top-0 bottom-0 w-60 bg-brand-navy z-40">
-        <SidebarContent onTestAI={() => setTestAIOpen(true)} />
+        <SidebarContent onTestAI={() => setTestAIOpen(true)} onLogout={handleLogout} />
       </aside>
 
       {/* ── Mobile sidebar drawer ──────────────────────────────────────────── */}
@@ -205,7 +214,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
             drawerOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
-          <SidebarContent onClose={() => setDrawerOpen(false)} onTestAI={() => setTestAIOpen(true)} />
+          <SidebarContent onClose={() => setDrawerOpen(false)} onTestAI={() => setTestAIOpen(true)} onLogout={handleLogout} />
         </div>
       </div>
 
@@ -307,9 +316,9 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
                   Settings
                 </Link>
                 <div className="my-1 border-t border-[#E5E7EB]" />
-                <Link href="/login" className="block px-4 py-2.5 text-[14px] text-[#EF4444] hover:bg-[#FEF2F2] transition-colors">
+                <button onClick={handleLogout} className="block w-full text-left px-4 py-2.5 text-[14px] text-[#EF4444] hover:bg-[#FEF2F2] transition-colors">
                   Log out
-                </Link>
+                </button>
               </div>
             )}
           </div>

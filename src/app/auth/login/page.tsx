@@ -1,4 +1,5 @@
-// Login page — build in step 6
-export default function LoginPage() {
-  return null;
+import { redirect } from "next/navigation";
+
+export default function AuthLoginRedirect() {
+  redirect("/login");
 }

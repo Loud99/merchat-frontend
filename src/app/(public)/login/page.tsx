@@ -134,6 +134,7 @@ export default function LoginPage() {
               >
                 Forgot password?
               </Link>
+              {/* href is already /forgot-password — matches (public)/forgot-password/page.tsx */}
             </div>
 
             {/* Log in button */}
@@ -168,7 +169,7 @@ export default function LoginPage() {
         {/* Sign-up link */}
         <p className="text-center text-[14px] text-[#6B7280] mt-6">
           Don&apos;t have an account?{" "}
-          <Link href="/onboarding" className="text-brand-orange font-semibold hover:opacity-75 transition-opacity">
+          <Link href="/signup" className="text-brand-orange font-semibold hover:opacity-75 transition-opacity">
             Start for free
           </Link>
         </p>
