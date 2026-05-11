@@ -167,8 +167,6 @@ function TypingIndicator() {
 
 // ── Modal ──────────────────────────────────────────────────────────────────────
 
-const TEST_MERCHANT_ID = "b4a55b01-be1b-4aed-a4bc-542a51a39caa";
-
 export default function TestAIModal({
   storeName,
   onClose,
@@ -186,22 +184,25 @@ export default function TestAIModal({
   // Fetch products + show welcome message
   useEffect(() => {
     const supabase = createClient();
-    supabase
-      .from("products")
-      .select("id, name, price, category, is_in_stock, description")
-      .eq("merchant_id", TEST_MERCHANT_ID)
-      .eq("is_active", true)
-      .then(({ data }) => {
-        const list = (data ?? []) as Product[];
-        setProducts(list);
-        setMessages([
-          {
-            role: "ai",
-            text: `Hello! 👋 Welcome to *${storeName}*. I'm your AI shopping assistant.\n\nHow can I help you today? You can ask about our products, prices, or how to place an order.`,
-            ts: new Date(),
-          },
-        ]);
-      });
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      supabase
+        .from("products")
+        .select("id, name, price, category, is_in_stock, description")
+        .eq("merchant_id", user.id)
+        .eq("is_active", true)
+        .then(({ data }) => {
+          const list = (data ?? []) as Product[];
+          setProducts(list);
+          setMessages([
+            {
+              role: "ai",
+              text: `Hello! 👋 Welcome to *${storeName}*. I'm your AI shopping assistant.\n\nHow can I help you today? You can ask about our products, prices, or how to place an order.`,
+              ts: new Date(),
+            },
+          ]);
+        });
+    });
 
     // Close on Escape
     function onKey(e: KeyboardEvent) {

@@ -9,8 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const MERCHANT_ID = "b4a55b01-be1b-4aed-a4bc-542a51a39caa";
-const VAT_RATE     = 0.075;
+const VAT_RATE = 0.075;
 const PAGE_SIZE    = 10;
 
 const QUARTERS = [
@@ -98,10 +97,13 @@ export default function FinancesPage() {
   useEffect(() => {
     const supabase = createClient();
     (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setLoading(false); return; }
+
       const { data } = await supabase
         .from("orders")
         .select("id, order_reference, total_amount, created_at, customers(name)")
-        .eq("merchant_id", MERCHANT_ID)
+        .eq("merchant_id", user.id)
         .eq("payment_status", "paid")
         .order("created_at", { ascending: false });
 

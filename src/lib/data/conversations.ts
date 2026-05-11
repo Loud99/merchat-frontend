@@ -2,8 +2,6 @@
 
 import { createClient } from "@/lib/supabase/server";
 
-const MERCHANT_ID = "b4a55b01-be1b-4aed-a4bc-542a51a39caa";
-
 export type UIThreadStatus = "ai_active" | "escalated" | "merchant_active" | "resolved";
 export type UIMsgRole = "customer" | "ai" | "merchant" | "system";
 
@@ -50,11 +48,13 @@ function relativeTime(date: Date): string {
 
 export async function getConversations(): Promise<UIThread[]> {
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
 
   const { data: convs } = await supabase
     .from("conversations")
     .select("id, ai_status, last_message_at, last_message_preview, unread_count, customer_id")
-    .eq("merchant_id", MERCHANT_ID)
+    .eq("merchant_id", user.id)
     .order("last_message_at", { ascending: false });
 
   if (!convs || convs.length === 0) return [];

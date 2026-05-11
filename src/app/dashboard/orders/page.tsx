@@ -108,13 +108,9 @@ function StatusTimeline({ status }: { status: OrderStatus }) {
   );
 }
 
-// ── Merchant name (stub — will come from auth context later) ──────────────────
-
-const MOCK_MERCHANT_NAME = "Fashion by Amina";
-
 // ── PDF receipt/invoice HTML generator ───────────────────────────────────────
 
-function generateDocHTML(order: Order, type: "receipt" | "invoice"): string {
+function generateDocHTML(order: Order, type: "receipt" | "invoice", merchantName: string): string {
   const sub = order.items.reduce((s, i) => s + i.qty * i.price, 0);
   const tot = sub + order.deliveryFee;
   const title = type === "invoice" ? "INVOICE" : "RECEIPT";
@@ -184,7 +180,7 @@ function generateDocHTML(order: Order, type: "receipt" | "invoice"): string {
 <body>
 <div class="page">
   <div class="hd">
-    <div class="hd-name">${MOCK_MERCHANT_NAME}</div>
+    <div class="hd-name">${merchantName}</div>
     <div class="hd-type">Official ${title.toLowerCase()}</div>
   </div>
   <hr class="dash">
@@ -256,10 +252,12 @@ function CopyLinkButton({ link }: { link: string }) {
 function ReceiptModal({
   order,
   type,
+  merchantName,
   onClose,
 }: {
   order: Order;
   type: "receipt" | "invoice";
+  merchantName: string;
   onClose: () => void;
 }) {
   const sub = subtotal(order);
@@ -276,7 +274,7 @@ function ReceiptModal({
   function handleDownload() {
     const w = window.open("", "_blank");
     if (!w) return;
-    w.document.write(generateDocHTML(order, type));
+    w.document.write(generateDocHTML(order, type, merchantName));
     w.document.close();
     w.focus();
     setTimeout(() => { w.print(); }, 250);
@@ -318,7 +316,7 @@ function ReceiptModal({
 
           {/* Branding */}
           <div className="text-center py-1">
-            <p className="text-[20px] font-bold text-brand-navy">{MOCK_MERCHANT_NAME}</p>
+            <p className="text-[20px] font-bold text-brand-navy">{merchantName}</p>
             <p className="text-[11px] text-[#9CA3AF] uppercase tracking-widest mt-1">
               Official {isInvoice ? "invoice" : "receipt"}
             </p>
@@ -554,10 +552,12 @@ function AdvanceDialog({
 
 function OrderDetailModal({
   order,
+  merchantName,
   onClose,
   onAdvance,
 }: {
   order: Order;
+  merchantName: string;
   onClose: () => void;
   onAdvance: (id: string) => void;
 }) {
@@ -704,7 +704,7 @@ function OrderDetailModal({
       </div>
 
       {receiptOpen && (
-        <ReceiptModal order={order} type={docType} onClose={() => setReceiptOpen(false)} />
+        <ReceiptModal order={order} type={docType} merchantName={merchantName} onClose={() => setReceiptOpen(false)} />
       )}
       {sendOpen && (
         <SendDialog
@@ -879,12 +879,21 @@ function SummaryCard({
 export default function OrdersPage() {
   const [orders, setOrders]               = useState<Order[]>([]);
   const [loading, setLoading]             = useState(true);
+  const [merchantName, setMerchantName]   = useState("My Store");
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [advanceOrderId, setAdvanceOrderId]   = useState<string | null>(null);
   const [mobileTab, setMobileTab]             = useState<OrderStatus>("New");
   const [expandedId, setExpandedId]           = useState<string | null>(null);
 
   useEffect(() => {
+    import("@/lib/supabase/client").then(({ createClient }) => {
+      const supabase = createClient();
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (!user) return;
+        supabase.from("merchants").select("business_name").eq("id", user.id).single()
+          .then(({ data }) => { if (data?.business_name) setMerchantName(data.business_name); });
+      });
+    });
     getOrders().then(data => { setOrders(data); setLoading(false); });
   }, []);
 
@@ -1024,6 +1033,7 @@ export default function OrdersPage() {
       {selectedOrder && (
         <OrderDetailModal
           order={selectedOrder}
+          merchantName={merchantName}
           onClose={() => setSelectedOrderId(null)}
           onAdvance={(id) => { setAdvanceOrderId(id); }}
         />

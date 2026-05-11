@@ -2,8 +2,6 @@
 
 import { createClient } from "@/lib/supabase/server";
 
-const MERCHANT_ID = "b4a55b01-be1b-4aed-a4bc-542a51a39caa";
-
 export type UIOrderStatus = "New" | "Confirmed" | "Paid" | "Dispatched" | "Delivered";
 
 export interface UIOrderItem { name: string; qty: number; price: number; }
@@ -43,11 +41,13 @@ function relativeTime(date: Date): string {
 
 export async function getOrders(): Promise<UIOrder[]> {
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
 
   const { data: rows } = await supabase
     .from("orders")
     .select("id, order_reference, status, payment_method, payment_status, total_amount, delivery_fee, delivery_address, landmark, created_at, customer_id")
-    .eq("merchant_id", MERCHANT_ID)
+    .eq("merchant_id", user.id)
     .order("created_at", { ascending: false });
 
   if (!rows || rows.length === 0) return [];

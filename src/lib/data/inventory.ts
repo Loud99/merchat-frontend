@@ -2,9 +2,6 @@
 
 import { createClient } from "@/lib/supabase/server";
 
-// Hardcoded until auth is wired up — replace with session.merchant_id
-const MERCHANT_ID = "b4a55b01-be1b-4aed-a4bc-542a51a39caa";
-
 export interface InventoryProduct {
   id: string;
   name: string;
@@ -21,8 +18,7 @@ export interface InventoryProduct {
 
 // ── Private helpers ───────────────────────────────────────────────────────────
 
-async function fetchFullProduct(id: string): Promise<InventoryProduct> {
-  const supabase = await createClient();
+async function fetchFullProduct(supabase: Awaited<ReturnType<typeof createClient>>, id: string): Promise<InventoryProduct> {
   const { data: p } = await supabase
     .from("products")
     .select("id, name, description, category, price, stock_quantity, is_in_stock, is_active, pay_on_delivery")
@@ -59,16 +55,18 @@ async function fetchFullProduct(id: string): Promise<InventoryProduct> {
 
 export async function getProducts(): Promise<InventoryProduct[]> {
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
 
   const { data: rows } = await supabase
     .from("products")
     .select("id, name, description, category, price, stock_quantity, is_in_stock, is_active")
-    .eq("merchant_id", MERCHANT_ID)
+    .eq("merchant_id", user.id)
     .order("created_at", { ascending: true });
 
   if (!rows || rows.length === 0) return [];
 
-  return Promise.all(rows.map((p) => fetchFullProduct(p.id)));
+  return Promise.all(rows.map((p) => fetchFullProduct(supabase, p.id)));
 }
 
 export async function saveProduct(data: {
@@ -84,10 +82,12 @@ export async function saveProduct(data: {
   variants: { label: string; options: string[] }[];
 }): Promise<InventoryProduct> {
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
   let productId = data.id;
 
   if (productId) {
-    // Update
     await supabase.from("products").update({
       name: data.name,
       description: data.description,
@@ -98,15 +98,13 @@ export async function saveProduct(data: {
       pay_on_delivery: data.payOnDelivery,
     }).eq("id", productId);
 
-    // Replace images
     await supabase.from("product_images").delete().eq("product_id", productId);
     await supabase.from("product_variants").delete().eq("product_id", productId);
   } else {
-    // Create
     const { data: created, error } = await supabase
       .from("products")
       .insert({
-        merchant_id: MERCHANT_ID,
+        merchant_id: user.id,
         name: data.name,
         description: data.description,
         category: data.category,
@@ -123,21 +121,19 @@ export async function saveProduct(data: {
     productId = created.id;
   }
 
-  // Insert images
   if (data.imageUrls.length > 0) {
     await supabase.from("product_images").insert(
       data.imageUrls.map((url, position) => ({ product_id: productId, url, position }))
     );
   }
 
-  // Insert variants
   if (data.variants.length > 0) {
     await supabase.from("product_variants").insert(
       data.variants.map((v) => ({ product_id: productId, label: v.label, options: v.options }))
     );
   }
 
-  return fetchFullProduct(productId!);
+  return fetchFullProduct(supabase, productId!);
 }
 
 export async function deleteProduct(id: string): Promise<void> {
@@ -175,9 +171,13 @@ export async function uploadProductImage(formData: FormData): Promise<string> {
   if (file.size > 10 * 1024 * 1024) throw new Error("File exceeds 10 MB limit");
 
   const ext = file.type === "image/jpeg" ? "jpg" : "png";
-  const filename = `${MERCHANT_ID}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const filename = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+
   const { data, error } = await supabase.storage
     .from("product-images")
     .upload(filename, file, { contentType: file.type, upsert: false });

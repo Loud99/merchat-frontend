@@ -2,24 +2,58 @@
 
 import { useState } from "react";
 import { CheckCircle2, Calendar } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+
+const BUSINESS_TYPES = [
+  "Fashion & Clothing",
+  "Food & Beverages",
+  "Electronics & Gadgets",
+  "Beauty & Health",
+  "Home & Living",
+  "Agriculture & Produce",
+  "General Merchandise",
+  "Other",
+];
 
 export default function BookDemoPage() {
   const [form, setForm] = useState({
     name: "",
     businessName: "",
     whatsapp: "",
+    businessType: "",
     message: "",
   });
+  const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   function handleChange(
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+
+    const supabase = createClient();
+    const { error: dbErr } = await supabase.from("demo_requests").insert({
+      full_name: form.name,
+      business_name: form.businessName,
+      whatsapp_number: form.whatsapp,
+      business_type: form.businessType,
+      message: form.message || null,
+    });
+
+    setSubmitting(false);
+
+    if (dbErr) {
+      setError("Something went wrong. Please try again.");
+      return;
+    }
+
     setSubmitted(true);
   }
 
@@ -50,10 +84,10 @@ export default function BookDemoPage() {
               </div>
               <div>
                 <h2 className="text-[22px] font-bold text-brand-navy mb-2">
-                  Thanks — we&apos;ll be in touch!
+                  Thanks {form.name.split(" ")[0]}! We&apos;ll be in touch.
                 </h2>
                 <p className="text-[16px] text-[#6B7280] leading-relaxed max-w-sm mx-auto">
-                  We&apos;ll be in touch within 24 hours.
+                  We&apos;ll reach out on WhatsApp within 24 hours to schedule your demo.
                 </p>
               </div>
               <p className="text-[13px] text-[#9CA3AF]">
@@ -67,7 +101,7 @@ export default function BookDemoPage() {
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
                 <label className="block text-[14px] font-semibold text-brand-navy mb-1.5">
-                  Name
+                  Full name
                 </label>
                 <input
                   type="text"
@@ -82,7 +116,7 @@ export default function BookDemoPage() {
 
               <div>
                 <label className="block text-[14px] font-semibold text-brand-navy mb-1.5">
-                  Business Name
+                  Business name
                 </label>
                 <input
                   type="text"
@@ -97,7 +131,7 @@ export default function BookDemoPage() {
 
               <div>
                 <label className="block text-[14px] font-semibold text-brand-navy mb-1.5">
-                  WhatsApp Number
+                  WhatsApp number
                 </label>
                 <input
                   type="tel"
@@ -108,6 +142,24 @@ export default function BookDemoPage() {
                   placeholder="+234 801 234 5678"
                   className="w-full h-11 px-4 rounded-lg border border-[#D1D5DB] text-[15px] text-brand-navy placeholder:text-[#9CA3AF] focus:outline-none focus:border-brand-navy transition-colors"
                 />
+              </div>
+
+              <div>
+                <label className="block text-[14px] font-semibold text-brand-navy mb-1.5">
+                  Business type
+                </label>
+                <select
+                  name="businessType"
+                  value={form.businessType}
+                  onChange={handleChange}
+                  required
+                  className="w-full h-11 px-4 rounded-lg border border-[#D1D5DB] text-[15px] text-brand-navy focus:outline-none focus:border-brand-navy transition-colors appearance-none bg-white"
+                >
+                  <option value="">Select your business type</option>
+                  {BUSINESS_TYPES.map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
               </div>
 
               <div>
@@ -124,11 +176,16 @@ export default function BookDemoPage() {
                 />
               </div>
 
+              {error && (
+                <p className="text-[13px] text-[#EF4444]">{error}</p>
+              )}
+
               <button
                 type="submit"
-                className="w-full h-12 bg-brand-orange text-white font-semibold text-[16px] rounded-lg hover:bg-[#B54E20] active:scale-[0.98] transition-all mt-2"
+                disabled={submitting}
+                className="w-full h-12 bg-brand-orange text-white font-semibold text-[16px] rounded-lg hover:bg-[#B54E20] active:scale-[0.98] transition-all mt-2 disabled:opacity-50"
               >
-                Book my demo →
+                {submitting ? "Booking…" : "Book my demo →"}
               </button>
 
               <p className="text-center text-[13px] text-[#9CA3AF]">

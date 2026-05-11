@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
-  Eye, EyeOff, CheckCircle2, Loader2, AlertCircle, Copy, Check,
+  CheckCircle2, Loader2, AlertCircle, Copy, Check,
   ImagePlus, Plus, X, ChevronDown, Rocket, Upload,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -73,7 +73,7 @@ const DEFAULT_HOURS: Record<string, DayHours> = {
 };
 
 const STEP_LABELS = [
-  "Sign Up",
+  "Business Info",
   "Connect WhatsApp",
   "Store Profile",
   "Add Products",
@@ -143,32 +143,21 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-// ── Step 1 — Sign Up ──────────────────────────────────────────────────────────
+// ── Step 1 — Business Info ────────────────────────────────────────────────────
 
 function Step1({
   data,
   onChange,
-  fromWhatsapp,
 }: {
   data: FormData;
   onChange: (k: keyof FormData, v: string) => void;
-  fromWhatsapp: boolean;
 }) {
-  const [showPw, setShowPw] = useState(false);
-
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-[22px] font-bold text-brand-navy">Let&apos;s get your store set up</h2>
+        <h2 className="text-[22px] font-bold text-brand-navy">Let&apos;s set up your store</h2>
         <p className="text-[14px] text-[#6B7280] mt-1">Takes under 10 minutes. No technical knowledge needed.</p>
       </div>
-
-      {fromWhatsapp && (
-        <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-[#DCFCE7] border border-[#16A34A]/30 text-[13px] text-[#16A34A] font-medium">
-          <Check size={15} strokeWidth={2.5} />
-          We got your number from WhatsApp — just fill in the rest.
-        </div>
-      )}
 
       <Field label="Business name">
         <input className={inputCls} placeholder="e.g. Fashion by Amina" value={data.businessName} onChange={e => onChange("businessName", e.target.value)} />
@@ -176,7 +165,7 @@ function Step1({
       <Field label="Your name">
         <input className={inputCls} placeholder="e.g. Amina Bello" value={data.ownerName} onChange={e => onChange("ownerName", e.target.value)} />
       </Field>
-      <Field label="Phone number">
+      <Field label="Phone number" helper="Business WhatsApp number your customers will message.">
         <div className="flex">
           <span className="flex items-center px-3 border border-r-0 border-[#D1D5DB] rounded-l-lg bg-[#F9FAFB] text-[14px] text-brand-navy shrink-0 whitespace-nowrap">
             🇳🇬 +234
@@ -189,9 +178,6 @@ function Step1({
             onChange={e => onChange("phone", e.target.value)}
           />
         </div>
-      </Field>
-      <Field label="Email address">
-        <input className={inputCls} type="email" placeholder="you@example.com" value={data.email} onChange={e => onChange("email", e.target.value)} />
       </Field>
       <Field label="Business category">
         <div className="relative">
@@ -206,32 +192,6 @@ function Step1({
           <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6B7280] pointer-events-none" />
         </div>
       </Field>
-      <Field label="Password" helper="At least 8 characters">
-        <div className="relative">
-          <input
-            className={`${inputCls} pr-11`}
-            type={showPw ? "text" : "password"}
-            placeholder="••••••••"
-            value={data.password}
-            onChange={e => onChange("password", e.target.value)}
-            autoComplete="new-password"
-          />
-          <button
-            type="button"
-            onClick={() => setShowPw(v => !v)}
-            aria-label={showPw ? "Hide password" : "Show password"}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-brand-navy transition-colors"
-          >
-            {showPw ? <EyeOff size={18} strokeWidth={1.5} /> : <Eye size={18} strokeWidth={1.5} />}
-          </button>
-        </div>
-      </Field>
-      <p className="text-[13px] text-[#6B7280]">
-        By continuing, you agree to our{" "}
-        <a href="#" className="text-brand-orange hover:opacity-75 transition-opacity">Terms of Service</a>
-        {" "}and{" "}
-        <a href="#" className="text-brand-orange hover:opacity-75 transition-opacity">Privacy Policy</a>.
-      </p>
     </div>
   );
 }
@@ -1068,18 +1028,21 @@ function OnboardingWizard() {
   );
   const [provisioningDone, setProvisioningDone] = useState((restored?.step ?? 1) > 2);
   const [savingLater, setSavingLater] = useState(false);
+  const [nextLoading, setNextLoading] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedScreen, setSavedScreen] = useState<{ token: string; email: string } | null>(null);
 
   async function saveAndContinueLater() {
-    if (!form.email) {
-      setSaveError("Please enter your email address first so we know where to send the link.");
-      return;
-    }
     setSavingLater(true);
     setSaveError(null);
     try {
       const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      const email = user?.email ?? form.email;
+      if (!email) {
+        setSaveError("Could not determine your email address. Please log in and try again.");
+        return;
+      }
       const token = (crypto.randomUUID() + crypto.randomUUID()).replace(/-/g, "");
       const formToSave = {
         ...form,
@@ -1088,18 +1051,18 @@ function OnboardingWizard() {
       };
       const { error } = await supabase.from("onboarding_sessions").insert({
         token,
-        email: form.email,
+        email,
         step,
         form_data: formToSave,
       });
       if (error) throw error;
-      setSavedScreen({ token, email: form.email });
+      setSavedScreen({ token, email });
       const resumeLink = `${window.location.origin}/onboarding/resume/${token}`;
       const subject = encodeURIComponent("Complete your Merchat setup");
       const body = encodeURIComponent(
         `Hi${form.ownerName ? " " + form.ownerName : ""},\n\nYour Merchat setup is saved. Resume where you left off:\n\n${resumeLink}\n\nThis link expires in 7 days.\n\n— The Merchat Team`
       );
-      window.open(`mailto:${form.email}?subject=${subject}&body=${body}`, "_blank");
+      window.open(`mailto:${email}?subject=${subject}&body=${body}`, "_blank");
     } catch (err) {
       console.error("Failed to save progress:", err);
       setSaveError("Something went wrong saving your progress. Please try again.");
@@ -1129,7 +1092,7 @@ function OnboardingWizard() {
 
   const canContinue = (() => {
     switch (step) {
-      case 1: return !!(form.businessName && form.ownerName && form.phone && form.email && form.category && form.password.length >= 8);
+      case 1: return !!(form.businessName && form.ownerName && form.phone && form.category);
       case 2: return provisioningDone;
       case 3: return !!form.displayName;
       case 4: return form.products.some(p => parseFloat(p.price) > 0);
@@ -1139,14 +1102,64 @@ function OnboardingWizard() {
   })();
 
   const ctaLabel =
-    step === 1 ? "Create my account →" :
     step === 6 ? "Go live! 🚀" :
     step === 7 ? "Go to my dashboard →" :
-    "Continue →";
+    "Save & Continue →";
 
-  function next() {
-    if (step < 7) setStep(s => s + 1);
-    else window.location.href = "/dashboard";
+  async function next() {
+    if (!canContinue) return;
+    if (step === 7) { window.location.href = "/dashboard"; return; }
+
+    setNextLoading(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        if (step === 1) {
+          await supabase.from("merchants").update({
+            business_name: form.businessName,
+            phone: form.phone,
+            category: form.category,
+          }).eq("id", user.id);
+        } else if (step === 3) {
+          const areas = form.deliveryAreas
+            ? form.deliveryAreas.split(",").map(s => s.trim()).filter(Boolean)
+            : [];
+          await supabase.from("merchants").update({
+            display_name: form.displayName,
+            description: form.description,
+            brand_colour: form.brandColour,
+            delivery_areas: areas,
+            delivery_fee: form.freeDelivery ? 0 : parseFloat(form.deliveryFee) || 0,
+            pod_enabled: form.paymentOnDelivery,
+          }).eq("id", user.id);
+        } else if (step === 4) {
+          const valid = form.products.filter(p => p.name && parseFloat(p.price) > 0);
+          if (valid.length > 0) {
+            await supabase.from("products").insert(
+              valid.map(p => ({
+                merchant_id: user.id,
+                name: p.name,
+                price: parseFloat(p.price),
+                stock_quantity: 99,
+                is_in_stock: true,
+                is_active: true,
+              }))
+            );
+          }
+        } else if (step === 6) {
+          await supabase.from("merchants").update({
+            provisioning_status: "active",
+          }).eq("id", user.id);
+        }
+      }
+    } catch (err) {
+      console.error("Onboarding step save failed:", err);
+    } finally {
+      setNextLoading(false);
+    }
+
+    setStep(s => s + 1);
   }
 
   const progress = ((step - 1) / 6) * 100;
@@ -1207,7 +1220,6 @@ function OnboardingWizard() {
             <Step1
               data={form}
               onChange={(k, v) => patch(k, v)}
-              fromWhatsapp={fromWhatsapp}
             />
           )}
           {step === 2 && (
@@ -1260,9 +1272,10 @@ function OnboardingWizard() {
             <button
               type="button"
               onClick={next}
-              disabled={!canContinue}
-              className="flex-1 lg:flex-none lg:min-w-[180px] h-[50px] rounded-lg bg-brand-orange text-white text-[15px] font-semibold hover:bg-[#B54E20] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!canContinue || nextLoading}
+              className="flex-1 lg:flex-none lg:min-w-[180px] h-[50px] rounded-lg bg-brand-orange text-white text-[15px] font-semibold hover:bg-[#B54E20] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
+              {nextLoading && <Loader2 size={16} className="animate-spin" />}
               {ctaLabel}
             </button>
           </div>

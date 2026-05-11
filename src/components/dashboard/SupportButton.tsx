@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { MessageCircle, X, Send, CheckCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
-const MERCHANT_ID = "b4a55b01-be1b-4aed-a4bc-542a51a39caa";
 
 type ModalStatus = "idle" | "sending" | "sent" | "error";
 
@@ -35,8 +34,9 @@ export default function SupportButton({
     setStatus("sending");
 
     const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
     const { error } = await supabase.from("support_tickets").insert({
-      merchant_id: MERCHANT_ID,
+      merchant_id: user?.id ?? null,
       message: message.trim(),
       status: "open",
     });

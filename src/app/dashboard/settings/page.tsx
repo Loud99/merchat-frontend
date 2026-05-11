@@ -64,7 +64,6 @@ const NIGERIAN_STATES = [
   "Sokoto", "Taraba", "Yobe", "Zamfara",
 ];
 
-const FINANCES_MERCHANT_ID = "b4a55b01-be1b-4aed-a4bc-542a51a39caa";
 const VAT_RATE = 0.075;
 const PAGE_SIZE = 10;
 
@@ -508,10 +507,13 @@ function FinancesSection() {
   useEffect(() => {
     const supabase = createClient();
     (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setLoading(false); return; }
+
       const { data } = await supabase
         .from("orders")
         .select("id, order_reference, total_amount, created_at, customers(name)")
-        .eq("merchant_id", FINANCES_MERCHANT_ID)
+        .eq("merchant_id", user.id)
         .eq("payment_status", "paid")
         .order("created_at", { ascending: false });
 

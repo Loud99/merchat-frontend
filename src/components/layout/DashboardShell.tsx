@@ -28,8 +28,6 @@ const NAV_LINKS = [
   { icon: Settings,      label: "Settings",      href: "/dashboard/settings" },
 ];
 
-const MOCK_MERCHANT_NAME  = "Fashion by Amina";
-const MOCK_MERCHANT_EMAIL = "amabibid400@gmail.com";
 
 function notifIcon(type: UINotification["type"]) {
   switch (type) {
@@ -55,7 +53,7 @@ function getInitials(name: string) {
 
 // ── Sidebar ────────────────────────────────────────────────────────────────────
 
-function SidebarContent({ onClose, onTestAI, onLogout }: { onClose?: () => void; onTestAI: () => void; onLogout: () => void }) {
+function SidebarContent({ onClose, onTestAI, onLogout, merchantName }: { onClose?: () => void; onTestAI: () => void; onLogout: () => void; merchantName: string }) {
   const pathname = usePathname();
 
   return (
@@ -82,7 +80,7 @@ function SidebarContent({ onClose, onTestAI, onLogout }: { onClose?: () => void;
             </button>
           )}
         </div>
-        <p className="text-[13px] text-white/60 truncate">{MOCK_MERCHANT_NAME}</p>
+        <p className="text-[13px] text-white/60 truncate">{merchantName}</p>
       </div>
 
       {/* Nav links */}
@@ -119,9 +117,9 @@ function SidebarContent({ onClose, onTestAI, onLogout }: { onClose?: () => void;
 
         <div className="flex items-center gap-3 px-1">
           <div className="w-8 h-8 rounded-full bg-brand-orange flex items-center justify-center text-white text-xs font-bold shrink-0">
-            {getInitials(MOCK_MERCHANT_NAME)}
+            {getInitials(merchantName)}
           </div>
-          <span className="flex-1 text-[13px] text-white/70 truncate">{MOCK_MERCHANT_NAME}</span>
+          <span className="flex-1 text-[13px] text-white/70 truncate">{merchantName}</span>
           <button aria-label="Log out" onClick={onLogout} className="text-white/40 hover:text-white transition-colors">
             <LogOut size={15} strokeWidth={1.5} />
           </button>
@@ -150,7 +148,7 @@ function pageTitle(pathname: string) {
 
 // ── Shell ──────────────────────────────────────────────────────────────────────
 
-export default function DashboardShell({ children }: { children: ReactNode }) {
+export default function DashboardShell({ children, merchantName = "Merchant", merchantEmail = "" }: { children: ReactNode; merchantName?: string; merchantEmail?: string }) {
   const [drawerOpen, setDrawerOpen]         = useState(false);
   const [avatarOpen, setAvatarOpen]         = useState(false);
   const [notifOpen, setNotifOpen]           = useState(false);
@@ -199,7 +197,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-[#F3F4F6]">
       {/* ── Desktop sidebar (fixed) ─────────────────────────────────────────── */}
       <aside className="hidden lg:flex flex-col fixed left-0 top-0 bottom-0 w-60 bg-brand-navy z-40">
-        <SidebarContent onTestAI={() => setTestAIOpen(true)} onLogout={handleLogout} />
+        <SidebarContent onTestAI={() => setTestAIOpen(true)} onLogout={handleLogout} merchantName={merchantName} />
       </aside>
 
       {/* ── Mobile sidebar drawer ──────────────────────────────────────────── */}
@@ -214,7 +212,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
             drawerOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
-          <SidebarContent onClose={() => setDrawerOpen(false)} onTestAI={() => setTestAIOpen(true)} onLogout={handleLogout} />
+          <SidebarContent onClose={() => setDrawerOpen(false)} onTestAI={() => setTestAIOpen(true)} onLogout={handleLogout} merchantName={merchantName} />
         </div>
       </div>
 
@@ -302,7 +300,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
               aria-label="Account menu"
             >
               <div className="w-8 h-8 rounded-full bg-brand-orange flex items-center justify-center text-white text-xs font-bold">
-                {getInitials(MOCK_MERCHANT_NAME)}
+                {getInitials(merchantName)}
               </div>
               <ChevronDown size={14} className={`text-brand-navy/50 transition-transform ${avatarOpen ? "rotate-180" : ""}`} />
             </button>
@@ -367,14 +365,14 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
 
       {testAIOpen && (
         <TestAIModal
-          storeName={MOCK_MERCHANT_NAME}
+          storeName={merchantName}
           onClose={() => setTestAIOpen(false)}
         />
       )}
 
       <SupportButton
-        merchantName={MOCK_MERCHANT_NAME}
-        merchantEmail={MOCK_MERCHANT_EMAIL}
+        merchantName={merchantName}
+        merchantEmail={merchantEmail}
       />
     </div>
   );
