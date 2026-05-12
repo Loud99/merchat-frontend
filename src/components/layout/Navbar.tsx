@@ -7,8 +7,8 @@ import { Menu, X } from "lucide-react";
 
 const navLinks = [
   { label: "How it works", href: "#how-it-works" },
-  { label: "Pricing", href: "#pricing" },
-  { label: "Features", href: "/features" },
+  { label: "Pricing",       href: "#pricing" },
+  { label: "Features",      href: "/features" },
 ];
 
 export default function Navbar() {
@@ -16,7 +16,8 @@ export default function Navbar() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    const handle = () => setScrolled(window.scrollY > 64);
+    const handle = () => setScrolled(window.scrollY > 80);
+    handle();
     window.addEventListener("scroll", handle, { passive: true });
     return () => window.removeEventListener("scroll", handle);
   }, []);
@@ -24,11 +25,13 @@ export default function Navbar() {
   return (
     <>
       <nav
-        className={`fixed inset-x-0 top-0 z-50 h-16 bg-white border-b border-[#E5E7EB] transition-shadow duration-200${
-          scrolled ? " shadow-[0_2px_8px_rgba(0,0,0,0.08)]" : ""
+        className={`fixed inset-x-0 top-0 z-50 h-[72px] transition-all duration-200 ${
+          scrolled
+            ? "bg-white/95 backdrop-blur-sm shadow-sm border-b border-[#E9ECEF]"
+            : "bg-white border-b border-[#E9ECEF]"
         }`}
       >
-        <div className="max-w-[1200px] mx-auto px-6 h-full flex items-center justify-between">
+        <div className="max-w-[1280px] mx-auto px-8 h-full flex items-center justify-between">
           <Link href="/" className="shrink-0">
             <Image
               src="/images/logo-light.svg"
@@ -46,7 +49,7 @@ export default function Navbar() {
               <a
                 key={l.label}
                 href={l.href}
-                className="text-[15px] font-medium text-[#374151] hover:text-brand-navy transition-colors"
+                className="text-[15px] font-medium text-[#343A40] hover:text-brand-orange transition-colors"
               >
                 {l.label}
               </a>
@@ -56,21 +59,21 @@ export default function Navbar() {
           <div className="hidden lg:flex items-center gap-4">
             <Link
               href="/login"
-              className="text-[15px] font-semibold text-brand-navy hover:opacity-70 transition-opacity"
+              className="text-[15px] font-medium text-[#343A40] hover:text-brand-orange transition-colors"
             >
               Log in
             </Link>
             <Link
               href="/onboarding"
-              className="bg-brand-orange text-white text-[15px] font-semibold px-7 py-3 rounded-lg hover:bg-[#B54E20] active:scale-[0.98] transition-all"
+              className="bg-brand-orange text-white text-[15px] font-semibold px-7 py-3 rounded-full hover:bg-brand-orange-hover active:scale-[0.97] transition-all"
             >
-              Start for free
+              Get started
             </Link>
           </div>
 
           <button
             onClick={() => setOpen(true)}
-            className="lg:hidden p-2 -mr-2 text-brand-navy"
+            className="lg:hidden p-2 -mr-2 text-[#343A40]"
             aria-label="Open menu"
           >
             <Menu size={24} strokeWidth={1.5} />
@@ -111,9 +114,9 @@ export default function Navbar() {
             <Link
               href="/onboarding"
               onClick={() => setOpen(false)}
-              className="block w-full bg-brand-orange text-white text-[15px] font-semibold text-center px-7 py-[14px] rounded-lg hover:bg-[#B54E20] transition-colors"
+              className="block w-full bg-brand-orange text-white text-[15px] font-semibold text-center px-7 py-[14px] rounded-full hover:bg-brand-orange-hover transition-colors"
             >
-              Start for free
+              Get started
             </Link>
           </div>
         </div>

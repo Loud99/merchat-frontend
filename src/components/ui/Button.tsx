@@ -5,7 +5,7 @@ import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary" | "orange" | "ghost" | "danger";
+  variant?: "primary" | "secondary" | "ghost" | "danger" | "whatsapp";
   size?: "sm" | "md" | "lg";
   loading?: boolean;
   leftIcon?: ReactNode;
@@ -28,20 +28,25 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const base =
-      "inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none";
+      "inline-flex items-center justify-center font-semibold rounded-full transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.97]";
 
     const variants: Record<NonNullable<ButtonProps["variant"]>, string> = {
-      primary: "bg-brand-navy text-white hover:bg-brand-navy-mid",
-      secondary: "bg-white text-brand-navy border border-gray-200 hover:bg-gray-50",
-      orange: "bg-brand-orange text-white hover:opacity-90",
-      ghost: "text-brand-navy hover:bg-gray-100",
-      danger: "bg-danger text-white hover:opacity-90",
+      primary:
+        "bg-brand-orange text-white hover:bg-brand-orange-hover shadow-sm hover:shadow-orange",
+      secondary:
+        "bg-transparent text-brand-navy border-[1.5px] border-brand-navy hover:bg-brand-navy/10",
+      ghost:
+        "bg-transparent text-grey-600 hover:bg-grey-100",
+      danger:
+        "bg-error text-white hover:opacity-90",
+      whatsapp:
+        "bg-wa-green text-white hover:opacity-90",
     };
 
     const sizes: Record<NonNullable<ButtonProps["size"]>, string> = {
-      sm: "h-8 px-3 text-sm gap-1.5",
-      md: "h-10 px-4 text-sm gap-2",
-      lg: "h-12 px-6 text-base gap-2",
+      sm: "py-2.5 px-5 text-[13px] gap-1.5",
+      md: "py-[14px] px-7 text-[15px] gap-2",
+      lg: "py-4 px-9 text-base gap-2",
     };
 
     return (

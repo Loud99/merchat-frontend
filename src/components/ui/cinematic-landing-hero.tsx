@@ -5,22 +5,57 @@ import Link from "next/link";
 import { gsap } from "gsap";
 import { cn } from "@/lib/utils";
 
+type Particle = {
+  x: number;
+  y: number;
+  speed: number;
+  opacity: number;
+  fadeDelay: number;
+  fadeStart: number;
+  fadingOut: boolean;
+};
+
 const INJECTED_STYLES = `
   .gsap-reveal { visibility: hidden; }
   /* Environment Overlays */
   .film-grain {
       position: absolute; inset: 0; width: 100%; height: 100%;
-      pointer-events: none; z-index: 50; opacity: 0.05; mix-blend-mode: overlay;
+      pointer-events: none; z-index: 50; opacity: 0.04; mix-blend-mode: overlay;
       background: url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="noiseFilter"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noiseFilter)"/></svg>');
   }
-  .bg-grid-theme {
-      background-size: 60px 60px;
-      background-image:
-          linear-gradient(to right, color-mix(in srgb, var(--color-foreground) 5%, transparent) 1px, transparent 1px),
-          linear-gradient(to bottom, color-mix(in srgb, var(--color-foreground) 5%, transparent) 1px, transparent 1px);
-      mask-image: radial-gradient(ellipse at center, black 0%, transparent 70%);
-      -webkit-mask-image: radial-gradient(ellipse at center, black 0%, transparent 70%);
+  /* Particle canvas */
+  .ch-particle-canvas {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      pointer-events: none; z-index: 1; mix-blend-mode: screen; opacity: 0.45;
   }
+  /* Animated accent lines */
+  .ch-accent-lines { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+  .ch-hline, .ch-vline {
+      position: absolute; background: rgba(26,43,74,0.9);
+      opacity: 0; will-change: transform, opacity;
+  }
+  .ch-hline { height: 1px; left: 0; right: 0; transform: scaleX(0); transform-origin: 50% 50%; animation: chDrawX 900ms cubic-bezier(.22,.61,.36,1) forwards; }
+  .ch-vline { width: 1px; top: 0; bottom: 0; transform: scaleY(0); transform-origin: 50% 0%; animation: chDrawY 1000ms cubic-bezier(.22,.61,.36,1) forwards; }
+  .ch-hline:nth-child(1){ top: 20%; animation-delay: 200ms; }
+  .ch-hline:nth-child(2){ top: 50%; animation-delay: 350ms; }
+  .ch-hline:nth-child(3){ top: 80%; animation-delay: 500ms; }
+  .ch-vline:nth-child(4){ left: 20%; animation-delay: 620ms; }
+  .ch-vline:nth-child(5){ left: 50%; animation-delay: 740ms; }
+  .ch-vline:nth-child(6){ left: 80%; animation-delay: 860ms; }
+  .ch-hline::after, .ch-vline::after {
+      content: ""; position: absolute; inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(213,101,43,0.25), transparent);
+      opacity: 0; animation: chShimmer 1000ms ease-out forwards;
+  }
+  .ch-hline:nth-child(1)::after{ animation-delay: 200ms; }
+  .ch-hline:nth-child(2)::after{ animation-delay: 350ms; }
+  .ch-hline:nth-child(3)::after{ animation-delay: 500ms; }
+  .ch-vline:nth-child(4)::after{ animation-delay: 620ms; }
+  .ch-vline:nth-child(5)::after{ animation-delay: 740ms; }
+  .ch-vline:nth-child(6)::after{ animation-delay: 860ms; }
+  @keyframes chDrawX { 0%{ transform: scaleX(0); opacity: 0; } 60%{ opacity: 0.8; } 100%{ transform: scaleX(1); opacity: 0.6; } }
+  @keyframes chDrawY { 0%{ transform: scaleY(0); opacity: 0; } 60%{ opacity: 0.8; } 100%{ transform: scaleY(1); opacity: 0.6; } }
+  @keyframes chShimmer { 0%{ opacity: 0; } 30%{ opacity: 0.3; } 100%{ opacity: 0; } }
   /* -------------------------------------------------------------------
      PHYSICAL SKEUOMORPHIC MATERIALS (Restored 3D Depth)
   ---------------------------------------------------------------------- */
@@ -234,6 +269,53 @@ export function CinematicHero({
   const mainCardRef = useRef<HTMLDivElement>(null);
   const mockupRef = useRef<HTMLDivElement>(null);
   const requestRef = useRef<number>(0);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  // Particle system
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const setSize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+    setSize();
+
+    let particles: Particle[] = [];
+    let raf = 0;
+    const count = () => Math.floor((canvas.width * canvas.height) / 7000);
+
+    const make = (): Particle => {
+      const fadeDelay = Math.random() * 600 + 100;
+      return { x: Math.random() * canvas.width, y: Math.random() * canvas.height, speed: Math.random() / 5 + 0.1, opacity: 0.6, fadeDelay, fadeStart: Date.now() + fadeDelay, fadingOut: false };
+    };
+
+    const reset = (p: Particle) => {
+      p.x = Math.random() * canvas.width; p.y = Math.random() * canvas.height;
+      p.speed = Math.random() / 5 + 0.1; p.opacity = 0.6;
+      p.fadeDelay = Math.random() * 600 + 100; p.fadeStart = Date.now() + p.fadeDelay; p.fadingOut = false;
+    };
+
+    const init = () => { particles = []; for (let i = 0; i < count(); i++) particles.push(make()); };
+
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particles.forEach((p) => {
+        p.y -= p.speed;
+        if (p.y < 0) reset(p);
+        if (!p.fadingOut && Date.now() > p.fadeStart) p.fadingOut = true;
+        if (p.fadingOut) { p.opacity -= 0.008; if (p.opacity <= 0) reset(p); }
+        ctx.fillStyle = `rgba(244, 237, 232, ${p.opacity})`;
+        ctx.fillRect(p.x, p.y, 0.6, Math.random() * 2 + 1);
+      });
+      raf = requestAnimationFrame(draw);
+    };
+
+    window.addEventListener("resize", () => { setSize(); init(); });
+    init();
+    raf = requestAnimationFrame(draw);
+    return () => { window.removeEventListener("resize", () => { setSize(); init(); }); cancelAnimationFrame(raf); };
+  }, []);
 
   // High-Performance Mouse Interaction Logic
   useEffect(() => {
@@ -346,12 +428,24 @@ export function CinematicHero({
         "relative w-screen h-screen overflow-hidden flex items-center justify-center font-sans antialiased",
         className
       )}
-      style={{ perspective: "1500px", backgroundColor: "#0a0f1e" }}
+      style={{ perspective: "1500px", backgroundColor: "#0B1221" }}
       {...props}
     >
       <style dangerouslySetInnerHTML={{ __html: INJECTED_STYLES }} />
       <div className="film-grain" aria-hidden="true" />
-      <div className="bg-grid-theme absolute inset-0 z-0 pointer-events-none opacity-50" aria-hidden="true" />
+
+      {/* Particle canvas */}
+      <canvas ref={canvasRef} className="ch-particle-canvas" aria-hidden="true" />
+
+      {/* Animated accent grid lines */}
+      <div className="ch-accent-lines" aria-hidden="true">
+        <div className="ch-hline" />
+        <div className="ch-hline" />
+        <div className="ch-hline" />
+        <div className="ch-vline" />
+        <div className="ch-vline" />
+        <div className="ch-vline" />
+      </div>
 
       {/* BACKGROUND LAYER: Hero Texts */}
       <div className="hero-text-wrapper absolute z-10 flex flex-col items-center justify-center text-center w-screen px-4 will-change-transform">

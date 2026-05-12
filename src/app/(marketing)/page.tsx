@@ -1,4 +1,4 @@
-import { CinematicHero } from "@/components/ui/cinematic-landing-hero";
+import MinimalHero from "@/components/ui/hero-minimalism";
 import SocialProofBar from "@/components/landing/SocialProofBar";
 import ProblemSection from "@/components/landing/ProblemSection";
 import HowItWorksSection from "@/components/landing/HowItWorksSection";
@@ -11,7 +11,7 @@ import FinalCTASection from "@/components/landing/FinalCTASection";
 export default function LandingPage() {
   return (
     <main className="overflow-x-hidden">
-      <CinematicHero />
+      <MinimalHero />
       <SocialProofBar />
       <ProblemSection />
       <div id="how-it-works">

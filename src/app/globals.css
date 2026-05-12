@@ -4,7 +4,8 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #182E47;
+  --foreground: #212529;
+  --color-foreground: #212529;
 }
 
 html {

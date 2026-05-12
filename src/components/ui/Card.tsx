@@ -2,6 +2,7 @@ import { HTMLAttributes, forwardRef } from "react";
 import { cn } from "@/lib/utils";
 
 export interface CardProps extends HTMLAttributes<HTMLDivElement> {
+  variant?: "default" | "dark" | "feature" | "metric";
   padding?: "none" | "sm" | "md" | "lg";
 }
 
@@ -12,18 +13,31 @@ const paddings = {
   lg: "p-8",
 };
 
+const cardVariants = {
+  default: "bg-white border border-[#E9ECEF] shadow-sm",
+  dark:    "bg-[#0F1A2E] border border-[#1A2B4A]",
+  feature: "bg-white shadow-md overflow-hidden",
+  metric:  "bg-white border border-[#E9ECEF]",
+};
+
 const Card = forwardRef<HTMLDivElement, CardProps>(
-  ({ className, padding = "md", children, ...props }, ref) => (
+  ({ className, variant = "default", padding = "md", children, ...props }, ref) => (
     <div
       ref={ref}
       className={cn(
-        "bg-white rounded-xl border border-gray-200 shadow-sm",
+        "rounded-2xl",
+        cardVariants[variant],
         paddings[padding],
         className
       )}
       {...props}
     >
-      {children}
+      {variant === "feature" ? (
+        <>
+          <div className="h-[3px] w-full bg-brand-orange" />
+          <div className={paddings[padding]}>{children}</div>
+        </>
+      ) : children}
     </div>
   )
 );
@@ -38,7 +52,7 @@ CardHeader.displayName = "CardHeader";
 
 const CardTitle = forwardRef<HTMLHeadingElement, HTMLAttributes<HTMLHeadingElement>>(
   ({ className, ...props }, ref) => (
-    <h3 ref={ref} className={cn("text-lg font-semibold text-brand-navy", className)} {...props} />
+    <h3 ref={ref} className={cn("text-lg font-semibold text-[#212529]", className)} {...props} />
   )
 );
 CardTitle.displayName = "CardTitle";
@@ -54,7 +68,7 @@ const CardFooter = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn("mt-4 pt-4 border-t border-gray-200", className)}
+      className={cn("mt-4 pt-4 border-t border-[#E9ECEF]", className)}
       {...props}
     />
   )
