@@ -42,7 +42,10 @@ export default function TestimonialsSection() {
   useLayoutEffect(() => {
     function measure() {
       if (!containerRef.current) return;
-      setCardW((containerRef.current.offsetWidth - 2 * GAP) / 3);
+      const w = containerRef.current.offsetWidth;
+      const perView = w >= 1024 ? 3 : 1;
+      const gaps = perView - 1;
+      setCardW((w - gaps * GAP) / perView);
     }
     measure();
     const ro = new ResizeObserver(measure);
