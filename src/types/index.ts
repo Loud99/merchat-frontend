@@ -1,4 +1,3 @@
-// Storefront types
 export interface Merchant {
   displayName: string;
   description: string;
@@ -7,7 +6,10 @@ export interface Merchant {
   deliveryAreas: string;
   deliveryFee: number | null;
   whatsappDeepLink: string;
+  whatsappPhone: string;
   slug: string;
+  isVerified: boolean;
+  podEnabled: boolean;
 }
 
 export interface ProductVariant {
@@ -23,6 +25,14 @@ export interface Product {
   category: string;
   imageUrls: string[];
   inStock: boolean;
+  stockQuantity: number;
   variants: ProductVariant[];
-  payOnDelivery?: boolean;
+  payOnDelivery: boolean;
+  isNew: boolean;
+}
+
+export interface CartItem {
+  product: Product;
+  quantity: number;
+  selectedVariants: Record<string, string>;
 }

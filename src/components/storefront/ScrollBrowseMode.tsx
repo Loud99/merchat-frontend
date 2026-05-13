@@ -5,16 +5,10 @@ import {
   X, SlidersHorizontal, ShoppingBag, ChevronLeft, ChevronRight,
   ArrowUp, Minus, Plus, Trash2,
 } from "lucide-react";
-import { Product, Merchant } from "@/types";
+import { Product, Merchant, CartItem } from "@/types";
 import { formatNaira, buildWALink } from "@/lib/storefront";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-
-interface CartItem {
-  product: Product;
-  selectedVariants: Record<string, string>;
-  qty: number;
-}
 
 type Sheet = "action" | "detail" | "filter" | "cart" | null;
 
@@ -32,17 +26,22 @@ function grad(category: string) {
   return `linear-gradient(135deg, ${from}, ${to})`;
 }
 
-function cartKey(p: Product, v: Record<string, string>) {
-  return `${p.id}||${Object.entries(v).sort().map(([k, val]) => `${k}:${val}`).join(",")}`;
+function cartKey(productId: string, v: Record<string, string>) {
+  return `${productId}||${Object.entries(v).sort().map(([k, val]) => `${k}:${val}`).join(",")}`;
 }
 
-function buildWhatsAppMsg(cart: CartItem[]): string {
-  const total = cart.reduce((s, i) => s + i.product.price * i.qty, 0);
+function buildWhatsAppMsg(cart: CartItem[], storeName: string): string {
+  const total = cart.reduce((s, i) => s + i.product.price * i.quantity, 0);
   const lines = cart.map(i => {
     const vText = Object.entries(i.selectedVariants).map(([k, v]) => `${k}: ${v}`).join(", ");
-    return `${i.qty}× ${i.product.name}${vText ? ` (${vText})` : ""} — ${formatNaira(i.product.price * i.qty)}`;
+    return `• ${i.product.name}${vText ? ` (${vText})` : ""} × ${i.quantity} — ${formatNaira(i.product.price * i.quantity)}`;
   });
-  return `Hi! I'd like to order:\n\n${lines.join("\n")}\n\nTotal: ${formatNaira(total)}`;
+  return (
+    `Hi! I'd like to place an order from ${storeName}:\n\n` +
+    `🛍️ My Order:\n${lines.join("\n")}\n\n` +
+    `💰 Total: ${formatNaira(total)}\n\n` +
+    `Please confirm availability and payment details. Thank you!`
+  );
 }
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
@@ -80,8 +79,8 @@ function CartScreen({
   onUpdateQty: (key: string, delta: number) => void;
   onRemove: (key: string) => void;
 }) {
-  const total = cart.reduce((s, i) => s + i.product.price * i.qty, 0);
-  const itemCount = cart.reduce((s, i) => s + i.qty, 0);
+  const total = cart.reduce((s, i) => s + i.product.price * i.quantity, 0);
+  const itemCount = cart.reduce((s, i) => s + i.quantity, 0);
 
   return (
     <div className="fixed inset-0 z-[180] bg-white flex flex-col">
@@ -117,7 +116,7 @@ function CartScreen({
           {/* Items */}
           <div className="flex-1 overflow-y-auto px-4 py-3 space-y-0">
             {cart.map(item => {
-              const key = cartKey(item.product, item.selectedVariants);
+              const key = cartKey(item.product.id, item.selectedVariants);
               const vText = Object.entries(item.selectedVariants)
                 .map(([k, v]) => `${k}: ${v}`).join(", ");
               return (
@@ -136,7 +135,7 @@ function CartScreen({
                     <p className="text-[14px] font-semibold text-[#182E47] line-clamp-1">{item.product.name}</p>
                     {vText && <p className="text-[12px] text-[#9CA3AF] mt-0.5">{vText}</p>}
                     <p className="text-[14px] font-bold mt-0.5" style={{ color: merchant.primaryColour }}>
-                      {formatNaira(item.product.price * item.qty)}
+                      {formatNaira(item.product.price * item.quantity)}
                     </p>
                     <div className="flex items-center gap-2 mt-2">
                       <button
@@ -146,7 +145,7 @@ function CartScreen({
                       >
                         <Minus size={12} />
                       </button>
-                      <span className="text-[14px] font-semibold text-[#182E47] w-5 text-center">{item.qty}</span>
+                      <span className="text-[14px] font-semibold text-[#182E47] w-5 text-center">{item.quantity}</span>
                       <button
                         onClick={() => onUpdateQty(key, 1)}
                         className="w-7 h-7 rounded-full border border-[#E5E7EB] flex items-center justify-center"
@@ -171,11 +170,11 @@ function CartScreen({
               <span className="text-[22px] font-bold text-[#182E47]">{formatNaira(total)}</span>
             </div>
             <a
-              href={buildWALink(merchant.whatsappDeepLink, buildWhatsAppMsg(cart))}
+              href={buildWALink(merchant.whatsappDeepLink, buildWhatsAppMsg(cart, merchant.displayName))}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center justify-center w-full h-12 rounded-xl text-white text-[15px] font-semibold"
-              style={{ backgroundColor: merchant.primaryColour }}
+              style={{ backgroundColor: "#25D366" }}
             >
               Order on WhatsApp
             </a>
@@ -494,10 +493,14 @@ function FilterSheet({
 export default function ScrollBrowseMode({
   products,
   merchant,
+  cart,
+  onAddToCart,
   onClose,
 }: {
   products: Product[];
   merchant: Merchant;
+  cart: CartItem[];
+  onAddToCart: (product: Product, variants: Record<string, string>, qty?: number) => void;
   onClose: () => void;
 }) {
   const inStock = products.filter(p => p.inStock);
@@ -506,7 +509,6 @@ export default function ScrollBrowseMode({
   const [filterCat, setFilterCat] = useState("All");
   const [index, setIndex] = useState(0);
   const [sheet, setSheet] = useState<Sheet>(null);
-  const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
   const [toastVisible, setToastVisible] = useState(false);
   const [imgKey, setImgKey] = useState(0); // used to trigger fade-in on product change
@@ -605,34 +607,13 @@ export default function ScrollBrowseMode({
 
   // ── Cart helpers ───────────────────────────────────────────────────────────
 
-  function addToCart(p: Product, v: Record<string, string>) {
-    const k = cartKey(p, v);
-    setCart(prev => {
-      const hit = prev.find(i => cartKey(i.product, i.selectedVariants) === k);
-      if (hit) return prev.map(i => cartKey(i.product, i.selectedVariants) === k ? { ...i, qty: i.qty + 1 } : i);
-      return [...prev, { product: p, selectedVariants: v, qty: 1 }];
-    });
-  }
-
-  function updateQty(k: string, delta: number) {
-    setCart(prev =>
-      prev
-        .map(i => cartKey(i.product, i.selectedVariants) === k ? { ...i, qty: i.qty + delta } : i)
-        .filter(i => i.qty > 0)
-    );
-  }
-
-  function removeItem(k: string) {
-    setCart(prev => prev.filter(i => cartKey(i.product, i.selectedVariants) !== k));
-  }
-
-  const totalItems = cart.reduce((s, i) => s + i.qty, 0);
+  const totalItems = cart.reduce((s, i) => s + i.quantity, 0);
 
   // ── Sheet actions ──────────────────────────────────────────────────────────
 
   function handleAddToCart() {
     if (!current) return;
-    addToCart(current, selectedVariants);
+    onAddToCart(current, selectedVariants, 1);
     setSheet(null);
     if (toastTimer.current) clearTimeout(toastTimer.current);
     setToastVisible(true);
@@ -641,7 +622,7 @@ export default function ScrollBrowseMode({
 
   function handleOrderNow() {
     if (!current) return;
-    addToCart(current, selectedVariants);
+    onAddToCart(current, selectedVariants, 1);
     setSheet("cart");
   }
 
@@ -832,8 +813,8 @@ export default function ScrollBrowseMode({
           cart={cart}
           merchant={merchant}
           onClose={() => setSheet(null)}
-          onUpdateQty={updateQty}
-          onRemove={removeItem}
+          onUpdateQty={() => {}}
+          onRemove={() => {}}
         />
       )}
 

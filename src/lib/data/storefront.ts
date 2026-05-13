@@ -8,7 +8,6 @@ export async function getStorefrontData(slug: string): Promise<{
 }> {
   const supabase = await createClient();
 
-  // Merchant by slug
   const { data: row } = await supabase
     .from("merchants")
     .select("*")
@@ -18,13 +17,12 @@ export async function getStorefrontData(slug: string): Promise<{
 
   if (!row) notFound();
 
-  // All active products for this merchant
   const { data: productRows } = await supabase
     .from("products")
-    .select("id, name, description, price, category, is_in_stock, pay_on_delivery")
+    .select("id, name, description, price, category, is_in_stock, stock_quantity, pay_on_delivery, is_new, created_at")
     .eq("merchant_id", row.id)
     .eq("is_active", true)
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: false });
 
   const products: Product[] = await Promise.all(
     (productRows ?? []).map(async (p) => {
@@ -48,7 +46,9 @@ export async function getStorefrontData(slug: string): Promise<{
         category: p.category ?? "",
         imageUrls: (images ?? []).map((i: { url: string }) => i.url),
         inStock: p.is_in_stock,
+        stockQuantity: p.stock_quantity ?? 99,
         payOnDelivery: p.pay_on_delivery ?? false,
+        isNew: p.is_new ?? false,
         variants: (variants ?? []).map((v: { label: string; options: string[] }) => ({
           label: v.label,
           options: v.options,
@@ -68,7 +68,10 @@ export async function getStorefrontData(slug: string): Promise<{
       : (row.delivery_areas ?? ""),
     deliveryFee: row.delivery_fee != null ? Number(row.delivery_fee) : null,
     whatsappDeepLink: `https://wa.me/${waNumber}`,
+    whatsappPhone: row.whatsapp_number ?? "",
     slug: row.slug,
+    isVerified: row.is_verified ?? false,
+    podEnabled: row.pod_enabled ?? false,
   };
 
   return { merchant, products };
