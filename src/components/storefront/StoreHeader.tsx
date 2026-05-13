@@ -61,15 +61,6 @@ export default function StoreHeader({ merchant, cartCount, onCartOpen, onBrowseM
           </div>
         </button>
 
-        {/* Browse mode — below cart */}
-        <button
-          onClick={onBrowseMode}
-          className="absolute top-[60px] right-4 flex items-center gap-1 bg-white/15 hover:bg-white/25 text-white text-[12px] font-medium px-3 py-1.5 rounded-full transition-colors"
-        >
-          <Play size={11} fill="white" strokeWidth={0} />
-          Browse Mode
-        </button>
-
         {/* Avatar */}
         {merchant.logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -115,14 +106,23 @@ export default function StoreHeader({ merchant, cartCount, onCartOpen, onBrowseM
           </a>
         )}
 
-        {/* Save to contacts */}
-        <button
-          onClick={downloadVCard}
-          className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white text-[12px] font-medium px-4 py-2 rounded-full transition-colors"
-        >
-          <UserPlus size={14} />
-          Save {merchant.displayName}
-        </button>
+        {/* Save + Browse row */}
+        <div className="flex items-center gap-2 flex-wrap justify-center">
+          <button
+            onClick={downloadVCard}
+            className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white text-[12px] font-medium px-4 py-2 rounded-full transition-colors"
+          >
+            <UserPlus size={14} />
+            Save {merchant.displayName}
+          </button>
+          <button
+            onClick={onBrowseMode}
+            className="flex items-center gap-1 bg-white/15 hover:bg-white/25 text-white text-[12px] font-medium px-4 py-2 rounded-full transition-colors"
+          >
+            <Play size={11} fill="white" strokeWidth={0} />
+            Browse Mode
+          </button>
+        </div>
       </div>
 
       {/* Sign-in prompt */}

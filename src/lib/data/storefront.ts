@@ -19,7 +19,7 @@ export async function getStorefrontData(slug: string): Promise<{
 
   const { data: productRows } = await supabase
     .from("products")
-    .select("id, name, description, price, category, is_in_stock, stock_quantity, pay_on_delivery, is_new, created_at")
+    .select("*")
     .eq("merchant_id", row.id)
     .eq("is_active", true)
     .order("created_at", { ascending: false });
