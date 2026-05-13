@@ -9,7 +9,7 @@ import { Merchant, Product, CartItem } from "@/types";
 import { formatNaira, buildWALink } from "@/lib/storefront";
 
 // ── constants ──────────────────────────────────────────────────────────────────
-const GREEN = "#25D366";
+const ORANGE = "#D5652B";
 
 function cartItemKey(productId: string, variants: Record<string, string>) {
   return `${productId}||${Object.entries(variants)
@@ -164,7 +164,7 @@ function ProductCard({
           {product.isNew && (
             <span
               className="text-[10px] font-semibold text-white px-2 py-0.5 rounded-full leading-tight"
-              style={{ backgroundColor: GREEN }}
+              style={{ backgroundColor: ORANGE }}
             >
               New
             </span>
@@ -196,7 +196,7 @@ function ProductCard({
               ? "text-white hover:opacity-90 active:scale-[0.97]"
               : "bg-[#ADB5BD] text-white cursor-not-allowed"
           }`}
-          style={product.inStock ? { backgroundColor: GREEN } : undefined}
+          style={product.inStock ? { backgroundColor: ORANGE } : undefined}
         >
           {product.inStock ? "Add to cart" : "Out of Stock"}
         </button>
@@ -251,7 +251,7 @@ function ProductModal({
       ? { color: "#F44336", text: "Out of stock" }
       : product.stockQuantity <= 5 && product.stockQuantity > 0
       ? { color: "#FF9800", text: `Only ${product.stockQuantity} left` }
-      : { color: GREEN, text: `In stock (${product.stockQuantity} available)` };
+      : { color: ORANGE, text: `In stock (${product.stockQuantity} available)` };
 
   const waMessage = `Hi, I'm interested in ${product.name}`;
   const waLink = buildWALink(merchant.whatsappDeepLink, waMessage);
@@ -339,7 +339,7 @@ function ProductModal({
                 <button
                   onClick={() => setShowMore((v) => !v)}
                   className="text-[13px] font-medium mt-1"
-                  style={{ color: GREEN }}
+                  style={{ color: ORANGE }}
                 >
                   {showMore ? "Show less" : "Show more"}
                 </button>
@@ -369,9 +369,9 @@ function ProductModal({
                       style={
                         selected
                           ? {
-                              backgroundColor: GREEN,
+                              backgroundColor: ORANGE,
                               color: "#fff",
-                              borderColor: GREEN,
+                              borderColor: ORANGE,
                             }
                           : {
                               backgroundColor: "#F1F3F5",
@@ -422,7 +422,7 @@ function ProductModal({
                 ? "hover:opacity-90 active:scale-[0.98]"
                 : "opacity-50 cursor-not-allowed"
             }`}
-            style={{ backgroundColor: GREEN }}
+            style={{ backgroundColor: ORANGE }}
           >
             {product.inStock
               ? `Add to Cart · ${formatNaira(total)}`
@@ -521,7 +521,7 @@ function CartDrawer({
               <button
                 onClick={onClose}
                 className="mt-2 h-11 px-8 rounded-full text-white text-[14px] font-semibold"
-                style={{ backgroundColor: GREEN }}
+                style={{ backgroundColor: ORANGE }}
               >
                 Browse Products
               </button>
@@ -624,7 +624,7 @@ function CartDrawer({
             <button
               onClick={onCheckout}
               className="flex items-center justify-center gap-2 w-full h-[52px] rounded-full text-white text-[16px] font-bold hover:opacity-90 active:scale-[0.98] transition-all"
-              style={{ backgroundColor: GREEN }}
+              style={{ backgroundColor: ORANGE }}
             >
               <WAIcon size={22} />
               Order via WhatsApp
@@ -685,9 +685,9 @@ function OrderConfirmation({
           fill="none"
           aria-hidden="true"
         >
-          <circle cx="40" cy="40" r="40" fill={GREEN} fillOpacity="0.12" />
-          <circle cx="40" cy="40" r="32" fill={GREEN} fillOpacity="0.2" />
-          <circle cx="40" cy="40" r="24" fill={GREEN} />
+          <circle cx="40" cy="40" r="40" fill={ORANGE} fillOpacity="0.12" />
+          <circle cx="40" cy="40" r="32" fill={ORANGE} fillOpacity="0.2" />
+          <circle cx="40" cy="40" r="24" fill={ORANGE} />
           <path
             d="M28 40l9 9 15-18"
             stroke="white"
@@ -726,7 +726,7 @@ function OrderConfirmation({
           target="_blank"
           rel="noopener noreferrer"
           className="text-[14px] font-medium text-center"
-          style={{ color: GREEN }}
+          style={{ color: ORANGE }}
         >
           Open WhatsApp manually
         </a>

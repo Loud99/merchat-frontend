@@ -54,7 +54,7 @@ export default function StoreHeader({ merchant, cartCount, onCartOpen, onBrowseM
           <div className="relative">
             <ShoppingCart size={24} className="text-white" strokeWidth={1.8} />
             {cartCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 w-[18px] h-[18px] rounded-full bg-[#25D366] flex items-center justify-center text-white text-[11px] font-bold leading-none">
+              <span className="absolute -top-1.5 -right-1.5 w-[18px] h-[18px] rounded-full bg-brand-orange flex items-center justify-center text-white text-[11px] font-bold leading-none">
                 {cartCount > 9 ? "9+" : cartCount}
               </span>
             )}
@@ -67,10 +67,10 @@ export default function StoreHeader({ merchant, cartCount, onCartOpen, onBrowseM
           <img
             src={merchant.logoUrl}
             alt={merchant.displayName}
-            className="w-[72px] h-[72px] rounded-full object-cover bg-white border-[3px] border-[#25D366] mb-3"
+            className="w-[72px] h-[72px] rounded-full object-cover bg-white border-[3px] border-brand-orange mb-3"
           />
         ) : (
-          <div className="w-[72px] h-[72px] rounded-full bg-brand-orange flex items-center justify-center text-white text-[24px] font-bold border-[3px] border-[#25D366] mb-3">
+          <div className="w-[72px] h-[72px] rounded-full bg-brand-orange flex items-center justify-center text-white text-[24px] font-bold border-[3px] border-brand-orange mb-3">
             {initials}
           </div>
         )}

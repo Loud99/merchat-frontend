@@ -76,7 +76,7 @@ export default function FilterBar({ filters, onFiltersChange }: FilterBarProps) 
             <SlidersHorizontal size={18} />
             Filter
             {activeCount > 0 && (
-              <span className="absolute -top-1.5 -right-2 w-4 h-4 rounded-full bg-[#25D366] text-white text-[10px] font-bold flex items-center justify-center leading-none">
+              <span className="absolute -top-1.5 -right-2 w-4 h-4 rounded-full bg-[#D5652B] text-white text-[10px] font-bold flex items-center justify-center leading-none">
                 {activeCount}
               </span>
             )}
@@ -89,7 +89,7 @@ export default function FilterBar({ filters, onFiltersChange }: FilterBarProps) 
               <button
                 key={pill.label}
                 onClick={pill.clear}
-                className="flex items-center gap-1 bg-[#25D366]/10 text-[#25D366] text-[12px] font-medium px-3 py-1 rounded-full shrink-0"
+                className="flex items-center gap-1 bg-[#D5652B]/10 text-[#D5652B] text-[12px] font-medium px-3 py-1 rounded-full shrink-0"
               >
                 {pill.label}
                 <X size={11} />
@@ -130,7 +130,7 @@ export default function FilterBar({ filters, onFiltersChange }: FilterBarProps) 
                     onClick={() => update({ category: cat })}
                     className={`px-4 py-1.5 rounded-full text-[13px] font-medium border transition-colors ${
                       filters.category === cat
-                        ? "bg-[#25D366] text-white border-[#25D366]"
+                        ? "bg-[#D5652B] text-white border-[#D5652B]"
                         : "bg-white text-[#343A40] border-[#E9ECEF]"
                     }`}
                   >
@@ -155,12 +155,12 @@ export default function FilterBar({ filters, onFiltersChange }: FilterBarProps) 
                     <div
                       className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
                         filters.sort === s.value
-                          ? "border-[#25D366]"
+                          ? "border-[#D5652B]"
                           : "border-[#DEE2E6]"
                       }`}
                     >
                       {filters.sort === s.value && (
-                        <div className="w-2 h-2 rounded-full bg-[#25D366]" />
+                        <div className="w-2 h-2 rounded-full bg-[#D5652B]" />
                       )}
                     </div>
                     {s.label}
@@ -181,7 +181,7 @@ export default function FilterBar({ filters, onFiltersChange }: FilterBarProps) 
                 <div
                   className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
                     filters.inStockOnly
-                      ? "bg-[#25D366] border-[#25D366]"
+                      ? "bg-[#D5652B] border-[#D5652B]"
                       : "border-[#DEE2E6]"
                   }`}
                 >
@@ -210,7 +210,7 @@ export default function FilterBar({ filters, onFiltersChange }: FilterBarProps) 
                 <div
                   onClick={() => update({ pod: !filters.pod })}
                   className={`w-11 h-6 rounded-full relative transition-colors cursor-pointer ${
-                    filters.pod ? "bg-[#25D366]" : "bg-[#DEE2E6]"
+                    filters.pod ? "bg-[#D5652B]" : "bg-[#DEE2E6]"
                   }`}
                 >
                   <div

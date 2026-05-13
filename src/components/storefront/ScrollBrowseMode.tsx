@@ -57,7 +57,7 @@ function Toast({ visible }: { visible: boolean }) {
       }}
     >
       <div className="bg-white rounded-2xl shadow-2xl px-5 py-3 flex items-center gap-2.5">
-        <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center shrink-0">
+        <div className="w-5 h-5 rounded-full bg-brand-orange flex items-center justify-center shrink-0">
           <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
             <path d="M1 4l3 3 5-6" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
@@ -174,7 +174,7 @@ function CartScreen({
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center justify-center w-full h-12 rounded-xl text-white text-[15px] font-semibold"
-              style={{ backgroundColor: "#25D366" }}
+              style={{ backgroundColor: "#D5652B" }}
             >
               Order on WhatsApp
             </a>

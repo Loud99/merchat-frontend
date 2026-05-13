@@ -10,7 +10,7 @@ Read this file first. Every other file references the tokens, components, and ru
 **Product:** Merchat.io — AI-powered WhatsApp commerce for Nigerian SMEs  
 **Tagline:** "Your store on WhatsApp"  
 **Tone:** Confident, modern, Nigerian-context aware. Not corporate. Not startup-jargony. Direct and warm.  
-**Visual personality:** Clean and premium but accessible. Dark navy with bright green accents. Feels like a fintech product built for real people.
+**Visual personality:** Clean and premium but accessible. Dark navy with warm orange accents. Feels like a fintech product built for real people.
 
 ---
 
@@ -50,9 +50,9 @@ The Merchat logo is a stylised meerkat (the animal) — upright, alert, forward-
 
 | Name | Hex | Usage |
 |------|-----|-------|
-| Merchat Green | `#00C853` | Primary CTA buttons, success states, active indicators |
-| Green Hover | `#00B348` | Hover state of green buttons |
-| Green Subtle | `#E8FAF0` | Light green tint backgrounds, success banners |
+| Merchat Orange | `#D5652B` | Primary CTA buttons, active indicators, brand accent |
+| Orange Hover | `#B54E20` | Hover state of orange buttons |
+| Orange Subtle | `#FBF0EB` | Light orange tint backgrounds, warm banners |
 
 ### Neutrals
 
@@ -152,7 +152,7 @@ The Merchat logo is a stylised meerkat (the animal) — upright, alert, forward-
 ### Admin Score Badge
 - Pill shape, border-radius: full
 - Padding: 4px 12px
-- Score 80+: Green Subtle bg, Merchat Green text
+- Score 80+: Green Subtle bg, Success green text
 - Score 60-79: `#E3F2FD` bg, `#1565C0` text
 - Score 40-59: `#FFF3E0` bg, `#E65100` text
 - Score 20-39: `#FFEBEE` bg, Error red text
@@ -162,16 +162,16 @@ The Merchat logo is a stylised meerkat (the animal) — upright, alert, forward-
 - 6 individual inputs, each 48px wide × 56px tall
 - Border: 1.5px solid Grey 200
 - Border-radius: md (8px)
-- Focus: Merchat Green border, 2px glow
+- Focus: Merchat Orange border, 2px glow
 - Filled: Grey 900 text, Grey 100 background
 - Auto-advance on input, auto-back on delete
 - Gap between boxes: 8px
 
 ### Dispute Timeline (Horizontal/Vertical Stepper)
-- Completed step: Merchat Green circle (24px) + white checkmark
-- Current step: Navy Deep circle + pulsing green ring animation (keyframe: scale 1 → 1.4, opacity 1 → 0, 1.5s loop)
+- Completed step: Merchat Orange circle (24px) + white checkmark
+- Current step: Navy Deep circle + pulsing orange ring animation (keyframe: scale 1 → 1.4, opacity 1 → 0, 1.5s loop)
 - Future step: Grey 200 circle + Grey 400 number
-- Connector line: 2px, Grey 200 (completed: Merchat Green)
+- Connector line: 2px, Grey 200 (completed: Merchat Orange)
 - Step label: Body S, Grey 900 (current: 600 weight), Grey 400 (future)
 - Step subtitle: Caption, Grey 600
 
@@ -238,7 +238,7 @@ Based on a 4px base unit.
 | shadow-md | `0 4px 12px rgba(0,0,0,0.10)` | Dropdowns, tooltips |
 | shadow-lg | `0 8px 24px rgba(0,0,0,0.12)` | Modals, popovers |
 | shadow-xl | `0 16px 48px rgba(0,0,0,0.16)` | Hero elements, prominent cards |
-| shadow-green | `0 4px 20px rgba(0,200,83,0.25)` | Green CTA buttons on hover |
+| shadow-orange | `0 4px 20px rgba(213,101,43,0.30)` | Orange CTA buttons on hover |
 | shadow-navy | `0 8px 32px rgba(11,18,33,0.40)` | Dark cards on light backgrounds |
 
 ---
@@ -247,12 +247,12 @@ Based on a 4px base unit.
 
 ### Buttons
 
-**Primary (Green)**
-- Background: Merchat Green `#00C853`
+**Primary (Orange)**
+- Background: Merchat Orange `#D5652B`
 - Text: White, Button size, 600 weight
 - Padding: 14px 28px
 - Border radius: full (pill)
-- Hover: Green Hover `#00B348` + shadow-green
+- Hover: Orange Hover `#B54E20` + shadow-orange
 - Active: scale(0.97)
 - Loading: spinner replaces text, disabled opacity
 
@@ -304,7 +304,7 @@ Based on a 4px base unit.
 - Padding: 0 16px
 - Font: Body M, Grey 800
 - Placeholder: Grey 400
-- Focus: border becomes Merchat Green, 2px glow `rgba(0,200,83,0.15)`
+- Focus: border becomes Merchat Orange, 2px glow `rgba(213,101,43,0.15)`
 - Error: border Error red, error message below in Error colour, Caption size
 - Label: Label size, Grey 800, 8px above input
 - Helper text: Caption, Grey 600, 4px below input
@@ -335,14 +335,14 @@ Based on a 4px base unit.
 - Border radius: 2xl (24px)
 - Padding: 32px
 - Shadow: shadow-md
-- Top accent bar: 3px, Merchat Green, full width, border-radius top
+- Top accent bar: 3px, Merchat Orange, full width, border-radius top
 
 **Metric Card (Dashboard)**
 - Background: White
 - Border: 1px solid Grey 200
 - Border radius: xl
 - Padding: 20px 24px
-- Icon container: 40px × 40px, Green Subtle background, border-radius lg, icon Merchat Green
+- Icon container: 40px × 40px, Orange Subtle background, border-radius lg, icon Merchat Orange
 
 ---
 
@@ -368,8 +368,8 @@ Based on a 4px base unit.
 - Height: 72px
 - Background: transparent (scrolled: White with shadow-sm and backdrop blur)
 - Logo: left-aligned, icon-dark.svg + wordmark-dark.svg on light sections, light variants on dark
-- Nav links: Body M, Grey 800, hover Merchat Green
-- Active link: Merchat Green, 600 weight
+- Nav links: Body M, Grey 800, hover Merchat Orange
+- Active link: Merchat Orange, 600 weight
 - Right side: "Log in" ghost button + "Get started" Primary button
 - Mobile: hamburger menu (≤768px), slides in from right
 
@@ -394,7 +394,7 @@ Based on a 4px base unit.
 - Label above input, always
 - Error messages below input
 - Submit button full-width on mobile, auto-width on desktop
-- Required fields marked with asterisk in Merchat Green
+- Required fields marked with asterisk in Merchat Orange
 - Section dividers: 1px Grey 200 horizontal rule
 
 ---
