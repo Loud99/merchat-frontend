@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
-export default function OldSlugRedirect({ params }: { params: { slug: string } }) {
-  redirect(`/store/${params.slug}`);
+export default async function OldSlugRedirect({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  redirect(`/store/${slug}`);
 }

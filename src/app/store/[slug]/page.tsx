@@ -8,9 +8,10 @@ import StorefrontFooter from "@/components/storefront/StorefrontFooter";
 export async function generateMetadata({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const { merchant } = await getStorefrontData(params.slug);
+  const { slug } = await params;
+  const { merchant } = await getStorefrontData(slug);
   return {
     title: `${merchant.displayName} — Shop on WhatsApp | Merchat`,
     description: `Browse and order from ${merchant.displayName}. ${merchant.description} Powered by Merchat.io`,
@@ -20,7 +21,7 @@ export async function generateMetadata({
       images: merchant.logoUrl ? [{ url: merchant.logoUrl }] : [],
     },
     alternates: {
-      canonical: `https://merchat.io/store/${params.slug}`,
+      canonical: `https://merchat.io/store/${slug}`,
     },
   };
 }
@@ -28,9 +29,10 @@ export async function generateMetadata({
 export default async function StorefrontPage({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }) {
-  const { merchant, products } = await getStorefrontData(params.slug);
+  const { slug } = await params;
+  const { merchant, products } = await getStorefrontData(slug);
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] flex flex-col">

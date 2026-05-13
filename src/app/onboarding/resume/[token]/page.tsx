@@ -6,14 +6,15 @@ import ResumeRedirector from "./ResumeRedirector";
 export default async function ResumePage({
   params,
 }: {
-  params: { token: string };
+  params: Promise<{ token: string }>;
 }) {
+  const { token } = await params;
   const supabase = await createClient();
 
   const { data } = await supabase
     .from("onboarding_sessions")
     .select("step, form_data, expires_at")
-    .eq("token", params.token)
+    .eq("token", token)
     .single();
 
   if (!data) {
