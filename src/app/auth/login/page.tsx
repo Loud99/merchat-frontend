@@ -9,7 +9,7 @@ import AuthLayout from "@/components/auth/AuthLayout";
 
 const inputCls =
   "w-full h-12 px-4 text-[15px] bg-[#F1F3F5] border-[1.5px] border-[#E9ECEF] rounded-xl outline-none transition-all " +
-  "focus:border-[#00C853] focus:ring-2 focus:ring-[#00C853]/15 focus:bg-white";
+  "focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/15 focus:bg-white";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -99,7 +99,7 @@ export default function LoginPage() {
               <div
                 onClick={() => setRemember((v) => !v)}
                 className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors cursor-pointer ${
-                  remember ? "bg-[#00C853] border-[#00C853]" : "border-[#DEE2E6]"
+                  remember ? "bg-brand-orange border-brand-orange" : "border-[#DEE2E6]"
                 }`}
               >
                 {remember && (
@@ -110,7 +110,7 @@ export default function LoginPage() {
               </div>
               <span className="text-[14px] text-[#343A40]">Remember me</span>
             </label>
-            <Link href="/auth/forgot-password" className="text-[14px] text-[#00C853] font-medium">
+            <Link href="/auth/forgot-password" className="text-[14px] text-brand-orange font-medium">
               Forgot password?
             </Link>
           </div>
@@ -169,7 +169,7 @@ export default function LoginPage() {
         {/* Bottom links */}
         <p className="text-center text-[14px] text-[#6C757D] mt-8">
           Don&apos;t have an account?{" "}
-          <Link href="/auth/signup" className="text-[#00C853] font-semibold">
+          <Link href="/auth/signup" className="text-brand-orange font-semibold">
             Sign up free
           </Link>
         </p>
@@ -180,7 +180,7 @@ export default function LoginPage() {
 
         <p className="text-center text-[14px] text-[#6C757D]">
           Shopping on Merchat?{" "}
-          <Link href="/auth/customer/login" className="text-[#00C853] font-medium">
+          <Link href="/auth/customer/login" className="text-brand-orange font-medium">
             Sign in as a customer →
           </Link>
         </p>
