@@ -55,7 +55,7 @@ export default function AuthLayout({ children, altLink }: AuthLayoutProps) {
             height={26}
             unoptimized
             priority
-            style={{ width: 160, height: "auto" }}
+            style={{ width: 160, height: "auto", filter: "brightness(0) invert(1)" }}
           />
         </div>
 
