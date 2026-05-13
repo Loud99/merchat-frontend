@@ -16,27 +16,49 @@ export default async function ResumePage({
     .eq("token", params.token)
     .single();
 
-  const expired = !data || new Date(data.expires_at) < new Date();
-
-  if (expired) {
+  if (!data) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-[#F3F4F6] px-4">
-        <div className="bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.08)] p-10 text-center max-w-md w-full">
-          <div className="w-14 h-14 rounded-full bg-[#FEF3C7] flex items-center justify-center mx-auto mb-5">
-            <AlertCircle size={28} className="text-[#D97706]" />
+      <main className="min-h-screen flex items-center justify-center bg-white px-4">
+        <div className="text-center max-w-md w-full">
+          <div className="flex justify-center mb-6">
+            <AlertCircle size={64} className="text-[#D97706]" />
           </div>
-          <h1 className="text-[22px] font-bold text-brand-navy mb-2">
-            This link has expired
+          <h1 className="text-[28px] font-bold text-[#212529] mb-3">
+            This link is invalid
           </h1>
-          <p className="text-[15px] text-[#6B7280] mb-8 leading-relaxed">
-            Resume links expire after 7 days. Start a new setup — it only takes
-            10 minutes.
+          <p className="text-[16px] text-[#6C757D] leading-relaxed mb-8">
+            This link is invalid or has already been used.
           </p>
           <Link
-            href="/onboarding"
-            className="inline-block bg-brand-orange text-white font-semibold text-[15px] px-7 py-3 rounded-lg hover:bg-[#B54E20] active:scale-[0.98] transition-all"
+            href="/auth/login"
+            className="inline-block bg-brand-orange text-white font-semibold text-[15px] px-8 py-3 rounded-full hover:bg-brand-orange-hover active:scale-[0.97] transition-all"
           >
-            Start setup →
+            Log in to continue
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  if (new Date(data.expires_at) < new Date()) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-white px-4">
+        <div className="text-center max-w-md w-full">
+          <div className="flex justify-center mb-6">
+            <AlertCircle size={64} className="text-[#D97706]" />
+          </div>
+          <h1 className="text-[28px] font-bold text-[#212529] mb-3">
+            This link has expired
+          </h1>
+          <p className="text-[16px] text-[#6C757D] leading-relaxed mb-8">
+            For security, resume links expire after 7 days. Log in to continue
+            your setup.
+          </p>
+          <Link
+            href="/auth/login"
+            className="inline-block bg-brand-orange text-white font-semibold text-[15px] px-8 py-3 rounded-full hover:bg-brand-orange-hover active:scale-[0.97] transition-all"
+          >
+            Log in to continue
           </Link>
         </div>
       </main>

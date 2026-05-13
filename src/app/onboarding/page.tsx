@@ -1,132 +1,139 @@
 "use client";
 
-import { useState, useEffect, useRef, Suspense } from "react";
+import { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
-  CheckCircle2, Loader2, AlertCircle, Copy, Check,
-  ImagePlus, Plus, X, ChevronDown, Rocket, Upload,
+  Check, CheckCircle, Copy, X, Plus, Trash2, Edit2,
+  ChevronDown, Upload, Building2, Truck, CreditCard,
+  Bookmark, AlertCircle, Loader2, Info, Shield,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
-// ── Types ──────────────────────────────────────────────────────────────────────
-
-interface Product {
-  id: string;
-  name: string;
-  price: string;
-  preview?: string;
-}
-
-interface DayHours {
-  enabled: boolean;
-  from: string;
-  to: string;
-}
-
-interface FormData {
-  businessName: string;
-  ownerName: string;
-  phone: string;
-  email: string;
-  category: string;
-  password: string;
-  displayName: string;
-  description: string;
-  logoPreview: string | null;
-  brandColour: string;
-  deliveryAreas: string;
-  deliveryFee: string;
-  freeDelivery: boolean;
-  paymentOnDelivery: boolean;
-  products: Product[];
-  aiName: string;
-  tone: "friendly" | "professional" | "energetic";
-  workingHours: Record<string, DayHours>;
-  outOfHoursMessage: string;
-  handoffThreshold: 2 | 3 | 4;
-  recoveryDiscountEnabled: boolean;
-  recoveryDiscount: string;
-}
-
-// ── Constants ─────────────────────────────────────────────────────────────────
-
-const CATEGORIES = [
-  "Fashion & Clothing", "Food & Drinks", "Beauty & Skincare",
-  "Electronics & Gadgets", "Home & Furniture", "Health & Wellness",
-  "Agriculture & Produce", "General Merchandise", "Other",
+// ── Nigerian states ────────────────────────────────────────────────────────────
+const NIGERIAN_STATES = [
+  "FCT Abuja", "Abia", "Adamawa", "Akwa Ibom", "Anambra", "Bauchi",
+  "Bayelsa", "Benue", "Borno", "Cross River", "Delta", "Ebonyi",
+  "Edo", "Ekiti", "Enugu", "Gombe", "Imo", "Jigawa", "Kaduna",
+  "Kano", "Katsina", "Kebbi", "Kogi", "Kwara", "Lagos", "Nasarawa",
+  "Niger", "Ogun", "Ondo", "Osun", "Oyo", "Plateau", "Rivers",
+  "Sokoto", "Taraba", "Yobe", "Zamfara",
 ];
 
-const COLOUR_PRESETS = ["#D5652B", "#182E47", "#16A34A", "#7C3AED", "#DB2777", "#0D9488"];
+const BUSINESS_TYPES = [
+  "Fashion & Clothing", "Food & Beverages", "Electronics & Gadgets",
+  "Beauty & Health", "Home & Living", "Books & Stationery",
+  "Kids & Toys", "Sports & Fitness", "Other",
+];
 
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const NIGERIAN_BANKS = [
+  "GTBank", "Access Bank", "Zenith Bank", "First Bank", "UBA",
+  "Fidelity Bank", "Sterling Bank", "Opay", "Kuda Bank", "Other",
+];
 
-const DEFAULT_HOURS: Record<string, DayHours> = {
-  Mon: { enabled: true,  from: "08:00", to: "20:00" },
-  Tue: { enabled: true,  from: "08:00", to: "20:00" },
-  Wed: { enabled: true,  from: "08:00", to: "20:00" },
-  Thu: { enabled: true,  from: "08:00", to: "20:00" },
-  Fri: { enabled: true,  from: "08:00", to: "20:00" },
-  Sat: { enabled: true,  from: "09:00", to: "18:00" },
-  Sun: { enabled: false, from: "09:00", to: "17:00" },
-};
+const DELIVERY_TIMES = [
+  "Same day", "1–2 days", "3–5 days", "1–2 weeks", "Varies",
+];
+
+const COLOUR_PRESETS = ["#D5652B", "#182E47", "#16A34A", "#7C3AED", "#DB2777", "#EF4444"];
+
+const VARIANT_TYPES = ["Size", "Colour", "Material", "Style", "Weight", "Pack Size"];
+const SIZE_OPTIONS = ["XS", "S", "M", "L", "XL", "XXL", "XXXL"];
 
 const STEP_LABELS = [
   "Business Info",
-  "Connect WhatsApp",
-  "Store Profile",
+  "Store Setup",
   "Add Products",
-  "Configure AI",
-  "Meet Your AI",
-  "Go Live",
+  "Delivery",
+  "Payment",
+  "WhatsApp",
+  "Review & Go Live",
 ];
 
-const PROVISIONED_NUMBER = "+234 901 234 5678";
+// ── Types ──────────────────────────────────────────────────────────────────────
 
-const DEFAULT_FORM: FormData = {
-  businessName: "", ownerName: "", phone: "", email: "", category: "", password: "",
-  displayName: "", description: "", logoPreview: null, brandColour: "#D5652B",
-  deliveryAreas: "", deliveryFee: "", freeDelivery: false, paymentOnDelivery: false,
-  products: [],
-  aiName: "Assistant", tone: "friendly",
-  workingHours: { ...DEFAULT_HOURS },
-  outOfHoursMessage: "Hi! We're currently closed but your message has been received. We'll get back to you first thing tomorrow. 🙏",
-  handoffThreshold: 3,
-  recoveryDiscountEnabled: false, recoveryDiscount: "",
-};
-
-// ── Shared helpers ─────────────────────────────────────────────────────────────
-
-const inputCls =
-  "w-full px-4 py-3 text-[15px] rounded-lg border border-[#D1D5DB] bg-white outline-none transition-all " +
-  "focus:border-brand-navy focus:shadow-[0_0_0_3px_rgba(24,46,71,0.12)]";
-
-function Field({ label, helper, children }: { label: string; helper?: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className="block text-[13px] font-semibold text-brand-navy mb-1.5">{label}</label>
-      {children}
-      {helper && <p className="text-[12px] text-[#6B7280] mt-1">{helper}</p>}
-    </div>
-  );
+interface VariantType {
+  type: string;
+  options: string[];
 }
 
-function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
-  return (
-    <label className="flex items-center gap-3 cursor-pointer select-none">
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        onClick={() => onChange(!checked)}
-        className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${checked ? "bg-brand-orange" : "bg-[#D1D5DB]"}`}
-      >
-        <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${checked ? "translate-x-4" : ""}`} />
-      </button>
-      <span className="text-[14px] text-brand-navy">{label}</span>
-    </label>
-  );
+interface OnboardingProduct {
+  id: string;
+  name: string;
+  category: string;
+  price: string;
+  compareAtPrice: string;
+  description: string;
+  imageUrls: string;
+  stockQuantity: string;
+  hasVariants: boolean;
+  variants: VariantType[];
+  podEnabled: boolean;
+}
+
+interface OnboardingForm {
+  // Step 1
+  businessName: string;
+  businessType: string;
+  businessDescription: string;
+  businessPhone: string;
+  city: string;
+  state: string;
+  // Step 2
+  storeName: string;
+  slug: string;
+  tagline: string;
+  logoPreview: string | null;
+  accentColour: string;
+  // Step 3
+  products: OnboardingProduct[];
+  // Step 4
+  deliveryStates: string[];
+  deliveryTime: string;
+  deliveryNote: string;
+  // Step 5
+  paymentMethods: string[];
+  bankName: string;
+  accountNumber: string;
+  accountName: string;
+  // Step 6
+  whatsappPath: "existing" | "setup";
+  whatsappNumber: string;
+}
+
+const DEFAULT_FORM: OnboardingForm = {
+  businessName: "", businessType: "", businessDescription: "",
+  businessPhone: "", city: "", state: "",
+  storeName: "", slug: "", tagline: "", logoPreview: null, accentColour: "#D5652B",
+  products: [],
+  deliveryStates: [], deliveryTime: "", deliveryNote: "",
+  paymentMethods: ["bank_transfer"], bankName: "", accountNumber: "", accountName: "",
+  whatsappPath: "existing", whatsappNumber: "",
+};
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+
+const inputCls =
+  "w-full h-11 px-4 text-[15px] bg-[#F8F9FA] border border-[#DEE2E6] rounded-xl outline-none transition-all " +
+  "focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/15 focus:bg-white";
+
+const textareaCls =
+  "w-full px-4 py-3 text-[15px] bg-[#F8F9FA] border border-[#DEE2E6] rounded-xl outline-none transition-all resize-none " +
+  "focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/15 focus:bg-white";
+
+function slugify(s: string) {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function passwordStrength(pw: string): 0 | 1 | 2 | 3 | 4 {
+  if (!pw) return 0;
+  let s = 0;
+  if (pw.length >= 8) s++;
+  if (pw.length >= 12) s++;
+  if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) s++;
+  if (/[0-9]/.test(pw) && /[^A-Za-z0-9]/.test(pw)) s++;
+  return Math.min(4, s) as 0 | 1 | 2 | 3 | 4;
 }
 
 function CopyButton({ text }: { text: string }) {
@@ -135,830 +142,885 @@ function CopyButton({ text }: { text: string }) {
     <button
       type="button"
       onClick={() => { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
-      className="shrink-0 p-1.5 rounded text-[#6B7280] hover:text-brand-navy transition-colors"
+      className="shrink-0 p-1.5 rounded text-[#6C757D] hover:text-brand-orange transition-colors"
       aria-label="Copy"
     >
-      {copied ? <Check size={16} className="text-[#16A34A]" /> : <Copy size={16} />}
+      {copied ? <Check size={16} className="text-brand-orange" /> : <Copy size={16} />}
     </button>
   );
 }
 
-// ── Step 1 — Business Info ────────────────────────────────────────────────────
-
-function Step1({
-  data,
-  onChange,
-}: {
-  data: FormData;
-  onChange: (k: keyof FormData, v: string) => void;
-}) {
+function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <div className="space-y-4">
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${checked ? "bg-brand-orange" : "bg-[#DEE2E6]"}`}
+    >
+      <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${checked ? "translate-x-4" : ""}`} />
+    </button>
+  );
+}
+
+// ── Step 1: Business Info ──────────────────────────────────────────────────────
+
+function Step1({ form, patch }: { form: OnboardingForm; patch: (k: keyof OnboardingForm, v: unknown) => void }) {
+  return (
+    <div className="space-y-5">
       <div>
-        <h2 className="text-[22px] font-bold text-brand-navy">Let&apos;s set up your store</h2>
-        <p className="text-[14px] text-[#6B7280] mt-1">Takes under 10 minutes. No technical knowledge needed.</p>
+        <h2 className="text-[26px] font-bold text-[#212529]">Tell us about your business</h2>
+        <p className="text-[16px] text-[#6C757D] mt-1">This helps us personalise your AI and storefront.</p>
       </div>
 
-      <Field label="Business name">
-        <input className={inputCls} placeholder="e.g. Fashion by Amina" value={data.businessName} onChange={e => onChange("businessName", e.target.value)} />
-      </Field>
-      <Field label="Your name">
-        <input className={inputCls} placeholder="e.g. Amina Bello" value={data.ownerName} onChange={e => onChange("ownerName", e.target.value)} />
-      </Field>
-      <Field label="Phone number" helper="Business WhatsApp number your customers will message.">
-        <div className="flex">
-          <span className="flex items-center px-3 border border-r-0 border-[#D1D5DB] rounded-l-lg bg-[#F9FAFB] text-[14px] text-brand-navy shrink-0 whitespace-nowrap">
-            🇳🇬 +234
-          </span>
-          <input
-            className={`${inputCls} rounded-l-none`}
-            type="tel"
-            placeholder="0801 234 5678"
-            value={data.phone}
-            onChange={e => onChange("phone", e.target.value)}
-          />
-        </div>
-      </Field>
-      <Field label="Business category">
+      <div>
+        <label className="block text-[12px] font-semibold text-[#343A40] mb-1.5">
+          Business name <span className="text-brand-orange">*</span>
+        </label>
+        <input
+          className={inputCls}
+          placeholder="Funke's Fashion"
+          value={form.businessName}
+          onChange={(e) => patch("businessName", e.target.value)}
+        />
+      </div>
+
+      <div>
+        <label className="block text-[12px] font-semibold text-[#343A40] mb-1.5">
+          Business type <span className="text-brand-orange">*</span>
+        </label>
         <div className="relative">
           <select
-            className={`${inputCls} appearance-none`}
-            value={data.category}
-            onChange={e => onChange("category", e.target.value)}
+            className={inputCls + " appearance-none pr-10"}
+            value={form.businessType}
+            onChange={(e) => patch("businessType", e.target.value)}
           >
-            <option value="">Select a category</option>
-            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+            <option value="">Select a business type</option>
+            {BUSINESS_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
-          <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6B7280] pointer-events-none" />
+          <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6C757D] pointer-events-none" />
         </div>
-      </Field>
-    </div>
-  );
-}
-
-// ── Step 2 — WhatsApp Provisioning ────────────────────────────────────────────
-
-const PROVISION_STEPS = [
-  "Registering your business",
-  "Creating your WhatsApp number",
-  "Configuring your business profile",
-];
-
-function Step2({ onDone }: { onDone: () => void }) {
-  const [phase, setPhase] = useState(0); // 0–2 = active step index, 3 = done
-  const called = useRef(false);
-
-  useEffect(() => {
-    const t1 = setTimeout(() => setPhase(1), 2500);
-    const t2 = setTimeout(() => setPhase(2), 5000);
-    const t3 = setTimeout(() => {
-      setPhase(3);
-      if (!called.current) { called.current = true; onDone(); }
-    }, 8000);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const statusMsg = `🎉 I've upgraded my store! Message me on my new number for faster service, easier ordering, and 24/7 availability: ${PROVISIONED_NUMBER}`;
-  const broadcastMsg = `Hi! I've moved my business to a new WhatsApp number with an AI assistant that can answer your questions and take orders anytime: ${PROVISIONED_NUMBER}. Save it now!`;
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-[22px] font-bold text-brand-navy">Setting up your WhatsApp business number</h2>
-        <p className="text-[14px] text-[#6B7280] mt-1">
-          We&apos;re registering a dedicated WhatsApp number in your business name. This usually takes 2–8 minutes.
-        </p>
       </div>
 
-      {phase < 3 ? (
-        <div className="space-y-4 py-4">
-          {PROVISION_STEPS.map((label, i) => {
-            const done = i < phase;
-            const active = i === phase;
-            return (
-              <div key={label} className="flex items-center gap-3">
-                {done  ? <CheckCircle2 size={22} className="text-[#16A34A] shrink-0" /> :
-                 active ? <Loader2 size={22} className="text-brand-orange animate-spin shrink-0" /> :
-                          <div className="w-[22px] h-[22px] rounded-full border-2 border-[#D1D5DB] shrink-0" />}
-                <span className={`text-[15px] ${done ? "text-[#16A34A]" : active ? "text-brand-navy font-medium" : "text-[#9CA3AF]"}`}>
-                  {label}
-                </span>
-              </div>
-            );
-          })}
+      <div>
+        <label className="block text-[12px] font-semibold text-[#343A40] mb-1.5">
+          Business description <span className="text-brand-orange">*</span>
+        </label>
+        <textarea
+          className={textareaCls}
+          rows={4}
+          maxLength={300}
+          placeholder="We sell affordable ankara and ready-to-wear fashion for working women in Lagos."
+          value={form.businessDescription}
+          onChange={(e) => patch("businessDescription", e.target.value)}
+        />
+        <div className="flex justify-between mt-1">
+          <p className="text-[12px] text-[#6C757D]">Your AI will use this to answer customer questions. Be specific about what you sell.</p>
+          <span className="text-[12px] text-[#ADB5BD] shrink-0 ml-2">{form.businessDescription.length}/300</span>
         </div>
-      ) : (
-        <div className="space-y-6">
-          <div className="flex flex-col items-center text-center py-2">
-            <CheckCircle2 size={48} className="text-[#16A34A] mb-3" />
-            <h3 className="text-[20px] font-bold text-brand-navy mb-1">Your number is live!</h3>
-            <p className="text-[24px] font-bold text-brand-orange mb-2">{PROVISIONED_NUMBER}</p>
-            <p className="text-[14px] text-[#6B7280]">
-              Customers who message this number reach your store — in your business name.
-            </p>
-          </div>
+      </div>
 
-          <div className="space-y-3">
-            <p className="text-[12px] font-semibold text-[#6B7280] uppercase tracking-wider">
-              Tell your existing customers about your new number
-            </p>
-            {[
-              { label: "WhatsApp Status text", text: statusMsg },
-              { label: "Broadcast message", text: broadcastMsg },
-            ].map(({ label, text }) => (
-              <div key={label} className="border border-[#E5E7EB] rounded-lg p-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-[12px] font-semibold text-brand-navy mb-1">{label}</p>
-                    <p className="text-[13px] text-[#6B7280] leading-relaxed">{text}</p>
-                  </div>
-                  <CopyButton text={text} />
-                </div>
-              </div>
-            ))}
-            <p className="text-[12px] text-[#9CA3AF]">
-              Share these now or find them anytime in your dashboard under Settings → Redirect Toolkit
-            </p>
+      <div>
+        <label className="block text-[12px] font-semibold text-[#343A40] mb-1.5">
+          Business phone number <span className="text-brand-orange">*</span>
+        </label>
+        <input
+          className={inputCls}
+          type="tel"
+          placeholder="+234 800 000 0000"
+          value={form.businessPhone}
+          onChange={(e) => patch("businessPhone", e.target.value)}
+        />
+        <p className="text-[12px] text-[#6C757D] mt-1">Your customers will contact this number. Can be your WhatsApp number.</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-[12px] font-semibold text-[#343A40] mb-1.5">City</label>
+          <input
+            className={inputCls}
+            placeholder="Lagos"
+            value={form.city}
+            onChange={(e) => patch("city", e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="block text-[12px] font-semibold text-[#343A40] mb-1.5">State</label>
+          <div className="relative">
+            <select
+              className={inputCls + " appearance-none pr-10"}
+              value={form.state}
+              onChange={(e) => patch("state", e.target.value)}
+            >
+              <option value="">Select state</option>
+              {NIGERIAN_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6C757D] pointer-events-none" />
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
 
-// ── Step 3 — Store Profile ────────────────────────────────────────────────────
+// ── Step 2: Store Setup ────────────────────────────────────────────────────────
 
-function Step3({
-  data,
-  onChange,
-  onLogoChange,
-}: {
-  data: FormData;
-  onChange: (k: keyof FormData, v: string | boolean) => void;
-  onLogoChange: (preview: string | null) => void;
-}) {
-  const [suggesting, setSuggesting] = useState(false);
+function Step2({ form, patch }: { form: OnboardingForm; patch: (k: keyof OnboardingForm, v: unknown) => void }) {
+  const [slugStatus, setSlugStatus] = useState<"idle" | "checking" | "available" | "taken">("idle");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  async function suggestDescription() {
-    setSuggesting(true);
-    await new Promise(r => setTimeout(r, 1200));
-    onChange(
-      "description",
-      `We offer the finest ${data.category || "products"} — carefully selected, quality guaranteed, and delivered right to you. Shop with us for the best ${data.businessName || "shopping"} experience.`
-    );
-    setSuggesting(false);
+  const checkSlug = useCallback(async (val: string) => {
+    if (!val || val.length < 3) { setSlugStatus("idle"); return; }
+    setSlugStatus("checking");
+    const supabase = createClient();
+    const { data } = await supabase.from("merchants").select("id").eq("slug", val).maybeSingle();
+    setSlugStatus(data ? "taken" : "available");
+  }, []);
+
+  function handleSlugChange(val: string) {
+    const clean = val.toLowerCase().replace(/[^a-z0-9-]/g, "");
+    patch("slug", clean);
+    setSlugStatus("idle");
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => checkSlug(clean), 600);
+  }
+
+  function handleStoreNameChange(val: string) {
+    patch("storeName", val);
+    if (!form.slug) {
+      const auto = slugify(val);
+      patch("slug", auto);
+      if (auto.length >= 3) {
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(() => checkSlug(auto), 600);
+      }
+    }
   }
 
   function handleLogoFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = ev => onLogoChange(ev.target?.result as string);
+    reader.onload = (ev) => patch("logoPreview", ev.target?.result as string);
     reader.readAsDataURL(file);
   }
 
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-[22px] font-bold text-brand-navy">Set up your store profile</h2>
-        <p className="text-[14px] text-[#6B7280] mt-1">This is what customers see when they visit your storefront page.</p>
+        <h2 className="text-[26px] font-bold text-[#212529]">Set up your storefront</h2>
+        <p className="text-[16px] text-[#6C757D] mt-1">Your storefront is where customers browse and shop.</p>
       </div>
 
-      <Field label="Store display name" helper="This is the name your customers see.">
-        <input className={inputCls} value={data.displayName} onChange={e => onChange("displayName", e.target.value)} />
-      </Field>
+      <div>
+        <label className="block text-[12px] font-semibold text-[#343A40] mb-1.5">
+          Store name <span className="text-brand-orange">*</span>
+        </label>
+        <input
+          className={inputCls}
+          placeholder="Funke's Fashion Store"
+          value={form.storeName}
+          onChange={(e) => handleStoreNameChange(e.target.value)}
+        />
+        <p className="text-[12px] text-[#6C757D] mt-1">This is what customers see at the top of your storefront.</p>
+      </div>
 
-      <Field label="Store description">
-        <div>
-          <textarea
-            className={`${inputCls} resize-none`}
-            rows={3}
-            maxLength={200}
-            placeholder="Tell customers what you sell and why they should buy from you"
-            value={data.description}
-            onChange={e => onChange("description", e.target.value)}
+      <div>
+        <label className="block text-[12px] font-semibold text-[#343A40] mb-1.5">
+          Your store link <span className="text-brand-orange">*</span>
+        </label>
+        <div className="flex h-11">
+          <span className="flex items-center px-3 bg-[#F1F3F5] border border-r-0 border-[#DEE2E6] rounded-l-xl text-[14px] text-[#6C757D] shrink-0 whitespace-nowrap">
+            merchat.io/store/
+          </span>
+          <input
+            className="flex-1 px-3 text-[15px] bg-[#F8F9FA] border border-[#DEE2E6] rounded-r-xl outline-none transition-all focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/15 focus:bg-white"
+            placeholder="funkes-fashion"
+            value={form.slug}
+            onChange={(e) => handleSlugChange(e.target.value)}
+            maxLength={50}
           />
-          <div className="flex items-center justify-between mt-1">
-            <button
-              type="button"
-              onClick={suggestDescription}
-              disabled={suggesting}
-              className="flex items-center gap-1 text-[13px] text-brand-orange hover:opacity-75 transition-opacity disabled:opacity-50"
-            >
-              {suggesting && <Loader2 size={13} className="animate-spin" />}
-              Suggest description ✨
-            </button>
-            <span className="text-[12px] text-[#9CA3AF]">{data.description.length}/200</span>
-          </div>
         </div>
-      </Field>
+        <div className="mt-1 flex items-center justify-between">
+          <p className="text-[12px] text-[#6C757D]">Only letters, numbers, and hyphens.</p>
+          {slugStatus === "checking" && <span className="text-[12px] text-[#ADB5BD]">Checking…</span>}
+          {slugStatus === "available" && <span className="text-[12px] text-[#16A34A] font-medium">✓ Available!</span>}
+          {slugStatus === "taken" && <span className="text-[12px] text-[#F44336] font-medium">✗ Taken</span>}
+        </div>
+      </div>
 
-      <Field label="Logo">
-        {data.logoPreview ? (
+      <div>
+        <label className="block text-[12px] font-semibold text-[#343A40] mb-1.5">Store tagline</label>
+        <input
+          className={inputCls}
+          placeholder="Affordable ankara for every occasion"
+          value={form.tagline}
+          onChange={(e) => patch("tagline", e.target.value.slice(0, 80))}
+          maxLength={80}
+        />
+        <div className="flex justify-between mt-1">
+          <p className="text-[12px] text-[#6C757D]">A short sentence that describes what you sell. Optional.</p>
+          <span className="text-[12px] text-[#ADB5BD]">{form.tagline.length}/80</span>
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-[12px] font-semibold text-[#343A40] mb-1.5">Store logo</label>
+        {form.logoPreview ? (
           <div className="flex items-center gap-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={data.logoPreview} alt="Logo preview" className="w-20 h-20 rounded-full object-cover border border-[#E5E7EB]" />
-            <button type="button" onClick={() => onLogoChange(null)} className="text-[13px] text-[#EF4444] hover:opacity-75 transition-opacity">
+            <img src={form.logoPreview} alt="Logo preview" className="w-[120px] h-[120px] rounded-full object-cover border-2 border-[#DEE2E6]" />
+            <button type="button" onClick={() => patch("logoPreview", null)} className="text-[13px] text-[#F44336] hover:opacity-75 transition-opacity">
               Remove
             </button>
           </div>
         ) : (
-          <label className="flex flex-col items-center justify-center border-2 border-dashed border-[#D1D5DB] rounded-lg p-6 cursor-pointer hover:border-brand-navy transition-colors">
-            <ImagePlus size={28} className="text-[#9CA3AF] mb-2" />
-            <span className="text-[14px] text-brand-navy font-medium">Upload your logo</span>
-            <span className="text-[12px] text-[#6B7280] mt-0.5">or tap to browse</span>
-            <span className="text-[11px] text-[#9CA3AF] mt-1">PNG, JPG — max 5MB</span>
-            <input type="file" accept="image/png,image/jpeg" className="hidden" onChange={handleLogoFile} />
+          <label className="flex flex-col items-center justify-center border-2 border-dashed border-[#DEE2E6] rounded-xl p-8 cursor-pointer hover:border-brand-orange transition-colors">
+            <Upload size={32} className="text-[#ADB5BD] mb-2" />
+            <span className="text-[14px] text-[#343A40] font-medium">Click to upload or drag and drop</span>
+            <span className="text-[12px] text-[#6C757D] mt-0.5">PNG, JPG or SVG · Max 2MB</span>
+            <input type="file" accept="image/png,image/jpeg,image/svg+xml" className="hidden" onChange={handleLogoFile} />
           </label>
         )}
-      </Field>
+      </div>
 
-      <Field label="Brand colour">
+      <div>
+        <label className="block text-[12px] font-semibold text-[#343A40] mb-1.5">
+          Accent colour <span className="text-[#ADB5BD] font-normal">(optional)</span>
+        </label>
+        <p className="text-[12px] text-[#6C757D] mb-2">Shown on your storefront buttons.</p>
         <div className="flex items-center gap-3 flex-wrap">
-          {COLOUR_PRESETS.map(c => (
+          {COLOUR_PRESETS.map((c) => (
             <button
               key={c}
               type="button"
-              onClick={() => onChange("brandColour", c)}
-              className="w-8 h-8 rounded-full border-2 transition-all"
+              onClick={() => patch("accentColour", c)}
+              className="w-8 h-8 rounded-full transition-all"
               style={{
                 backgroundColor: c,
-                borderColor: data.brandColour === c ? "#182E47" : "transparent",
-                boxShadow: data.brandColour === c ? "0 0 0 2px #fff, 0 0 0 4px #182E47" : "none",
+                outline: form.accentColour === c ? `3px solid ${c}` : "none",
+                outlineOffset: "2px",
               }}
             />
           ))}
           <input
             type="text"
-            value={data.brandColour}
-            onChange={e => onChange("brandColour", e.target.value)}
-            className="w-28 px-3 py-2 text-[13px] rounded-lg border border-[#D1D5DB] outline-none focus:border-brand-navy transition-all"
+            value={form.accentColour}
+            onChange={(e) => patch("accentColour", e.target.value)}
+            className="w-28 h-9 px-3 text-[13px] bg-[#F8F9FA] border border-[#DEE2E6] rounded-lg outline-none focus:border-brand-orange transition-all"
             placeholder="#D5652B"
           />
         </div>
-      </Field>
-
-      <Field label="Delivery areas" helper="Comma-separated areas. Your customers will see this.">
-        <input
-          className={inputCls}
-          placeholder="e.g. Lagos Island, Victoria Island, Lekki Phase 1"
-          value={data.deliveryAreas}
-          onChange={e => onChange("deliveryAreas", e.target.value)}
-        />
-      </Field>
-
-      <div className="space-y-3">
-        <Toggle checked={data.freeDelivery} onChange={v => onChange("freeDelivery", v)} label="Free delivery" />
-        {!data.freeDelivery && (
-          <Field label="Delivery fee">
-            <div className="flex">
-              <span className="flex items-center px-3 border border-r-0 border-[#D1D5DB] rounded-l-lg bg-[#F9FAFB] text-[14px] text-brand-navy shrink-0">₦</span>
-              <input
-                className={`${inputCls} rounded-l-none`}
-                type="number"
-                placeholder="0"
-                value={data.deliveryFee}
-                onChange={e => onChange("deliveryFee", e.target.value)}
-              />
-            </div>
-          </Field>
-        )}
       </div>
-
-      <Toggle
-        checked={data.paymentOnDelivery}
-        onChange={v => onChange("paymentOnDelivery", v)}
-        label="Payment on delivery"
-      />
     </div>
   );
 }
 
-// ── Step 4 — Add Products ─────────────────────────────────────────────────────
+// ── Step 3: Add Products ───────────────────────────────────────────────────────
 
-function Step4({ products, onChange }: { products: Product[]; onChange: (p: Product[]) => void }) {
-  const [tab, setTab] = useState<"gallery" | "manual">("gallery");
-  const [manualName, setManualName] = useState("");
-  const [manualPrice, setManualPrice] = useState("");
+const EMPTY_PRODUCT = (): OnboardingProduct => ({
+  id: Date.now().toString(),
+  name: "", category: "", price: "", compareAtPrice: "",
+  description: "", imageUrls: "", stockQuantity: "1",
+  hasVariants: false, variants: [], podEnabled: false,
+});
 
-  function remove(id: string) { onChange(products.filter(p => p.id !== id)); }
-  function update(id: string, key: "name" | "price", value: string) {
-    onChange(products.map(p => p.id === id ? { ...p, [key]: value } : p));
-  }
-
-  function handleGallery(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? []);
-    const next: Product[] = files.map((f, i) => ({
-      id: `${Date.now()}-${i}`,
-      name: f.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " "),
-      price: "",
-      preview: URL.createObjectURL(f),
-    }));
-    onChange([...products, ...next]);
-    e.target.value = "";
-  }
-
-  function saveManual() {
-    if (!manualName || !manualPrice) return;
-    onChange([...products, { id: Date.now().toString(), name: manualName, price: manualPrice }]);
-    setManualName(""); setManualPrice("");
-  }
-
-  const hasValid = products.some(p => parseFloat(p.price) > 0);
-
-  return (
-    <div className="space-y-5">
-      <div>
-        <h2 className="text-[22px] font-bold text-brand-navy">Add your products</h2>
-        <p className="text-[14px] text-[#6B7280] mt-1">Upload product photos and set prices. You can add more later.</p>
-      </div>
-
-      <div className="flex border-b border-[#E5E7EB]">
-        {[
-          { key: "gallery", label: "📷 Gallery upload" },
-          { key: "manual", label: "✏️ Manual entry" },
-          { key: "pricelist", label: "📋 Price list photo", disabled: true },
-        ].map(({ key, label, disabled }) => (
-          <button
-            key={key}
-            type="button"
-            disabled={!!disabled}
-            onClick={() => !disabled && setTab(key as "gallery" | "manual")}
-            title={disabled ? "Coming soon" : undefined}
-            className={`px-3 py-2.5 text-[13px] font-medium border-b-2 -mb-px transition-colors ${
-              tab === key ? "border-brand-orange text-brand-orange" : "border-transparent text-[#6B7280] hover:text-brand-navy"
-            } ${disabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {tab === "gallery" ? (
-        <div className="space-y-4">
-          {products.length > 0 && (
-            <div className="px-3 py-2 bg-[#F4EDE8] border-l-4 border-brand-orange rounded text-[13px] text-brand-navy">
-              AI has named your products. Review the names and add prices to continue.
-            </div>
-          )}
-          <label className="flex flex-col items-center justify-center border-2 border-dashed border-[#D1D5DB] rounded-lg p-8 cursor-pointer hover:border-brand-navy transition-colors">
-            <Upload size={28} className="text-[#9CA3AF] mb-2" />
-            <span className="text-[14px] text-brand-navy font-medium">Select up to 50 product photos</span>
-            <span className="text-[12px] text-[#6B7280] mt-0.5">Tap to browse your gallery or drag photos here</span>
-            <span className="text-[11px] text-[#9CA3AF] mt-1">JPG, PNG, WebP — max 10MB each</span>
-            <input type="file" accept="image/*" multiple className="hidden" onChange={handleGallery} />
-          </label>
-          {products.length > 0 && (
-            <div className="grid grid-cols-3 gap-3">
-              {products.map(p => (
-                <div key={p.id} className="relative">
-                  <button
-                    type="button"
-                    onClick={() => remove(p.id)}
-                    className="absolute top-1 right-1 z-10 w-5 h-5 bg-black/50 rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors"
-                  >
-                    <X size={11} />
-                  </button>
-                  <div className="aspect-square bg-[#F3F4F6] rounded-lg overflow-hidden mb-1.5">
-                    {p.preview ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.preview} alt={p.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-[#9CA3AF]">
-                        <ImagePlus size={22} />
-                      </div>
-                    )}
-                  </div>
-                  <input
-                    value={p.name}
-                    onChange={e => update(p.id, "name", e.target.value)}
-                    className="w-full text-[12px] text-brand-navy border-b border-transparent hover:border-[#D1D5DB] focus:border-brand-navy outline-none transition-colors mb-1"
-                  />
-                  <div className="flex items-center">
-                    <span className="text-[12px] text-[#6B7280] mr-0.5">₦</span>
-                    <input
-                      type="number"
-                      placeholder="0"
-                      value={p.price}
-                      onChange={e => update(p.id, "price", e.target.value)}
-                      className="flex-1 text-[13px] font-semibold text-brand-navy border-b border-[#D1D5DB] focus:border-brand-orange outline-none transition-colors"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <div className="space-y-3">
-            <Field label="Product name">
-              <input className={inputCls} value={manualName} onChange={e => setManualName(e.target.value)} placeholder="e.g. Ankara Midi Dress" />
-            </Field>
-            <Field label="Price">
-              <div className="flex">
-                <span className="flex items-center px-3 border border-r-0 border-[#D1D5DB] rounded-l-lg bg-[#F9FAFB] text-[14px] text-brand-navy shrink-0">₦</span>
-                <input
-                  className={`${inputCls} rounded-l-none`}
-                  type="number"
-                  placeholder="0"
-                  value={manualPrice}
-                  onChange={e => setManualPrice(e.target.value)}
-                />
-              </div>
-            </Field>
-          </div>
-          <button
-            type="button"
-            onClick={saveManual}
-            disabled={!manualName || !manualPrice}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-brand-orange text-white text-[13px] font-semibold disabled:opacity-50 hover:bg-[#B54E20] transition-colors"
-          >
-            <Plus size={14} /> Save product
-          </button>
-
-          {products.length > 0 && (
-            <div className="space-y-2">
-              {products.map(p => (
-                <div key={p.id} className="flex items-center justify-between px-3 py-2.5 border border-[#E5E7EB] rounded-lg">
-                  <span className="text-[14px] text-brand-navy truncate mr-4">{p.name}</span>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className="text-[14px] font-semibold text-brand-navy">₦{p.price}</span>
-                    <button type="button" onClick={() => remove(p.id)} className="text-[#9CA3AF] hover:text-[#EF4444] transition-colors">
-                      <X size={15} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {products.length === 0 && (
-        <p className="text-[13px] text-[#D97706]">Add at least one product to continue. You can always add more from your dashboard.</p>
-      )}
-      {products.length > 0 && !hasValid && (
-        <p className="text-[13px] text-[#D97706]">Add a price to at least one product to continue.</p>
-      )}
-    </div>
-  );
-}
-
-// ── Step 5 — Configure AI ─────────────────────────────────────────────────────
-
-const TONES = [
-  { key: "friendly",     label: "Friendly & Casual",     desc: "Warm, conversational, uses everyday language. Great for fashion, food, beauty." },
-  { key: "professional", label: "Professional & Formal",  desc: "Polished and businesslike. Good for electronics, services, B2B." },
-  { key: "energetic",    label: "Energetic & Salesy",     desc: "Enthusiastic, uses emojis, drives urgency. Great for promotions." },
-] as const;
-
-function Step5({
-  data,
-  onChange,
-  onHoursChange,
+function ProductForm({
+  product, onSave, onCancel,
 }: {
-  data: FormData;
-  onChange: (k: keyof FormData, v: string | boolean | number) => void;
-  onHoursChange: (day: string, field: keyof DayHours, value: string | boolean) => void;
+  product: OnboardingProduct;
+  onSave: (p: OnboardingProduct) => void;
+  onCancel: () => void;
 }) {
+  const [p, setP] = useState(product);
+  const [variantType, setVariantType] = useState("");
+
+  function set(k: keyof OnboardingProduct, v: unknown) {
+    setP((prev) => ({ ...prev, [k]: v }));
+  }
+
+  function addVariantType() {
+    if (!variantType || p.variants.some((v) => v.type === variantType)) return;
+    set("variants", [...p.variants, { type: variantType, options: [] }]);
+    setVariantType("");
+  }
+
+  function setVariantOptions(type: string, options: string[]) {
+    set("variants", p.variants.map((v) => v.type === type ? { ...v, options } : v));
+  }
+
+  function removeVariant(type: string) {
+    set("variants", p.variants.filter((v) => v.type !== type));
+  }
+
+  const sizeStrength = passwordStrength; // reuse signature for POD badge, unused here
+  void sizeStrength;
+
   return (
-    <div className="space-y-5">
-      <div>
-        <h2 className="text-[22px] font-bold text-brand-navy">Set up your AI assistant</h2>
-        <p className="text-[14px] text-[#6B7280] mt-1">Your AI handles customer conversations in your name. Customise how it speaks.</p>
+    <div className="border border-[#DEE2E6] rounded-2xl p-5 space-y-4 bg-white">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="col-span-2">
+          <label className="block text-[12px] font-semibold text-[#343A40] mb-1.5">
+            Product name <span className="text-brand-orange">*</span>
+          </label>
+          <input className={inputCls} placeholder="Ankara Midi Dress" value={p.name} onChange={(e) => set("name", e.target.value)} />
+        </div>
+
+        <div className="col-span-2">
+          <label className="block text-[12px] font-semibold text-[#343A40] mb-1.5">
+            Category <span className="text-brand-orange">*</span>
+          </label>
+          <div className="relative">
+            <select className={inputCls + " appearance-none pr-10"} value={p.category} onChange={(e) => set("category", e.target.value)}>
+              <option value="">Select a category</option>
+              {BUSINESS_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6C757D] pointer-events-none" />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-[12px] font-semibold text-[#343A40] mb-1.5">
+            Price (₦) <span className="text-brand-orange">*</span>
+          </label>
+          <input className={inputCls} type="number" min="0" placeholder="0" value={p.price} onChange={(e) => set("price", e.target.value)} />
+        </div>
+        <div>
+          <label className="block text-[12px] font-semibold text-[#343A40] mb-1.5">Compare at price (₦)</label>
+          <input className={inputCls} type="number" min="0" placeholder="0" value={p.compareAtPrice} onChange={(e) => set("compareAtPrice", e.target.value)} />
+        </div>
+
+        <div className="col-span-2">
+          <label className="block text-[12px] font-semibold text-[#343A40] mb-1.5">Description</label>
+          <textarea className={textareaCls} rows={3} placeholder="Describe this product..." value={p.description} onChange={(e) => set("description", e.target.value)} />
+        </div>
+
+        <div className="col-span-2">
+          <label className="block text-[12px] font-semibold text-[#343A40] mb-1.5">Product images</label>
+          <textarea
+            className={textareaCls}
+            rows={2}
+            placeholder="https://... , https://... , https://..."
+            value={p.imageUrls}
+            onChange={(e) => set("imageUrls", e.target.value)}
+          />
+          <p className="text-[12px] text-[#6C757D] mt-1">Paste image URLs separated by commas. Use Google Drive, Cloudinary, or any public image host.</p>
+        </div>
+
+        <div>
+          <label className="block text-[12px] font-semibold text-[#343A40] mb-1.5">
+            Stock quantity <span className="text-brand-orange">*</span>
+          </label>
+          <input className={inputCls} type="number" min="0" value={p.stockQuantity} onChange={(e) => set("stockQuantity", e.target.value)} />
+        </div>
       </div>
 
-      <Field label="AI name" helper="Customers will see this name when the AI introduces itself.">
-        <input
-          className={inputCls}
-          placeholder="e.g. Amina's Assistant, StoreBot"
-          value={data.aiName}
-          onChange={e => onChange("aiName", e.target.value)}
-        />
-      </Field>
-
-      <Field label="Tone">
-        <div className="space-y-2.5">
-          {TONES.map(({ key, label, desc }) => {
-            const selected = data.tone === key;
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => onChange("tone", key)}
-                className={`relative w-full text-left p-4 rounded-xl border-2 transition-all ${
-                  selected ? "border-brand-orange bg-[#FFF8F5]" : "border-[#E5E7EB] bg-white hover:border-[#D1D5DB]"
-                }`}
-              >
-                {selected && <Check size={16} className="absolute top-3 right-3 text-brand-orange" />}
-                <p className="text-[14px] font-semibold text-brand-navy pr-6">{label}</p>
-                <p className="text-[13px] text-[#6B7280] mt-0.5 leading-relaxed">{desc}</p>
-              </button>
-            );
-          })}
+      {/* Variants */}
+      <div className="pt-2">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-[13px] font-semibold text-[#343A40]">Does this product have variants?</span>
+          <Toggle checked={p.hasVariants} onChange={(v) => set("hasVariants", v)} />
         </div>
-      </Field>
-
-      <Field label="Working hours" helper="Outside these hours, the AI uses your out-of-hours message.">
-        <div className="space-y-2.5">
-          {DAYS.map(day => {
-            const h = data.workingHours[day];
-            return (
-              <div key={day} className="flex items-center gap-3 flex-wrap">
-                <span className="w-8 text-[13px] font-medium text-brand-navy shrink-0">{day}</span>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={h.enabled}
-                  onClick={() => onHoursChange(day, "enabled", !h.enabled)}
-                  className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${h.enabled ? "bg-brand-orange" : "bg-[#D1D5DB]"}`}
-                >
-                  <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${h.enabled ? "translate-x-4" : ""}`} />
-                </button>
-                {h.enabled ? (
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="time"
-                      value={h.from}
-                      onChange={e => onHoursChange(day, "from", e.target.value)}
-                      className="text-[13px] border border-[#D1D5DB] rounded px-2 py-1 outline-none focus:border-brand-navy transition-colors"
-                    />
-                    <span className="text-[12px] text-[#6B7280]">to</span>
-                    <input
-                      type="time"
-                      value={h.to}
-                      onChange={e => onHoursChange(day, "to", e.target.value)}
-                      className="text-[13px] border border-[#D1D5DB] rounded px-2 py-1 outline-none focus:border-brand-navy transition-colors"
-                    />
+        {p.hasVariants && (
+          <div className="space-y-3 pl-1">
+            {p.variants.map((v) => (
+              <div key={v.type} className="border border-[#DEE2E6] rounded-xl p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[13px] font-semibold text-[#343A40]">{v.type}</span>
+                  <button type="button" onClick={() => removeVariant(v.type)} className="text-[#ADB5BD] hover:text-[#F44336]"><X size={14} /></button>
+                </div>
+                {v.type === "Size" ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {SIZE_OPTIONS.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => {
+                          const opts = v.options.includes(s) ? v.options.filter((o) => o !== s) : [...v.options, s];
+                          setVariantOptions(v.type, opts);
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-[12px] font-medium border transition-colors ${
+                          v.options.includes(s) ? "bg-brand-orange text-white border-brand-orange" : "border-[#DEE2E6] text-[#343A40]"
+                        }`}
+                      >
+                        {s}
+                      </button>
+                    ))}
                   </div>
                 ) : (
-                  <span className="text-[13px] text-[#9CA3AF]">Closed</span>
+                  <input
+                    className={inputCls}
+                    placeholder={`e.g. Red, Blue, Green (comma separated)`}
+                    value={v.options.join(", ")}
+                    onChange={(e) => setVariantOptions(v.type, e.target.value.split(",").map((o) => o.trim()).filter(Boolean))}
+                  />
                 )}
               </div>
-            );
-          })}
-        </div>
-      </Field>
-
-      <Field label="Out-of-hours message">
-        <textarea
-          className={`${inputCls} resize-none`}
-          rows={3}
-          value={data.outOfHoursMessage}
-          onChange={e => onChange("outOfHoursMessage", e.target.value)}
-        />
-      </Field>
-
-      <Field label="AI handoff threshold" helper="How many times the AI tries before handing off to you.">
-        <div className="flex border border-[#D1D5DB] rounded-lg overflow-hidden">
-          {([2, 3, 4] as const).map(n => (
-            <button
-              key={n}
-              type="button"
-              onClick={() => onChange("handoffThreshold", n)}
-              className={`flex-1 py-2.5 text-[13px] font-medium transition-colors border-r border-[#D1D5DB] last:border-r-0 ${
-                data.handoffThreshold === n ? "bg-brand-navy text-white" : "text-brand-navy hover:bg-[#F3F4F6]"
-              }`}
-            >
-              {n} failed
-            </button>
-          ))}
-        </div>
-      </Field>
-
-      <div className="space-y-3">
-        <Toggle
-          checked={data.recoveryDiscountEnabled}
-          onChange={v => onChange("recoveryDiscountEnabled", v)}
-          label="Offer a discount for abandoned orders"
-        />
-        {data.recoveryDiscountEnabled && (
-          <Field label="Discount" helper="Shown in the abandoned cart reminder sent 2 hours after an unpaid order.">
-            <div className="flex">
-              <input
-                className={`${inputCls} rounded-r-none`}
-                type="number"
-                placeholder="10"
-                value={data.recoveryDiscount}
-                onChange={e => onChange("recoveryDiscount", e.target.value)}
-              />
-              <span className="flex items-center px-3 border border-l-0 border-[#D1D5DB] rounded-r-lg bg-[#F9FAFB] text-[14px] text-brand-navy shrink-0">%</span>
+            ))}
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <select className={inputCls + " appearance-none pr-10 text-[14px]"} value={variantType} onChange={(e) => setVariantType(e.target.value)}>
+                  <option value="">Add variant type</option>
+                  {VARIANT_TYPES.filter((t) => !p.variants.some((v) => v.type === t)).map((t) => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+                <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6C757D] pointer-events-none" />
+              </div>
+              <button
+                type="button"
+                onClick={addVariantType}
+                disabled={!variantType}
+                className="px-3 h-11 rounded-xl bg-brand-orange text-white text-[13px] font-medium disabled:opacity-40 hover:bg-brand-orange-hover transition-colors"
+              >
+                Add
+              </button>
             </div>
-          </Field>
+          </div>
         )}
+      </div>
+
+      {/* POD */}
+      <div className="flex items-center justify-between pt-2">
+        <div>
+          <span className="text-[13px] font-semibold text-[#343A40]">Accept pay on delivery for this product</span>
+          {p.podEnabled && (
+            <span className="ml-2 text-[11px] bg-[#FBF0EB] text-brand-orange px-2 py-0.5 rounded-full font-medium">Pay on delivery available</span>
+          )}
+        </div>
+        <Toggle checked={p.podEnabled} onChange={(v) => set("podEnabled", v)} />
+      </div>
+
+      <div className="flex gap-2 pt-2">
+        <button
+          type="button"
+          onClick={() => onSave(p)}
+          disabled={!p.name || !p.price || !p.category}
+          className="flex-1 h-11 rounded-xl bg-brand-orange text-white text-[14px] font-semibold disabled:opacity-50 hover:bg-brand-orange-hover transition-colors"
+        >
+          Save Product
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-5 h-11 rounded-xl border border-[#DEE2E6] text-[#6C757D] text-[14px] hover:bg-[#F8F9FA] transition-colors"
+        >
+          Cancel
+        </button>
       </div>
     </div>
   );
 }
 
-// ── Step 6 — Meet Your AI ─────────────────────────────────────────────────────
+function Step3({ form, patch }: { form: OnboardingForm; patch: (k: keyof OnboardingForm, v: unknown) => void }) {
+  const [editing, setEditing] = useState<OnboardingProduct | null>(null);
+  const [isNew, setIsNew] = useState(false);
 
-interface ChatMsg { role: "customer" | "ai"; text: string; }
+  function openNew() { setEditing(EMPTY_PRODUCT()); setIsNew(true); }
+  function openEdit(p: OnboardingProduct) { setEditing({ ...p }); setIsNew(false); }
 
-function buildChat(data: FormData): ChatMsg[][] {
-  const cat = data.category || "products";
-  const store = data.displayName || data.businessName || "our store";
-  const ai = data.aiName || "Assistant";
-  const p0 = data.products[0];
-  const p1 = data.products[1];
-  const p2 = data.products[2];
-  const areas = data.deliveryAreas || "select areas";
-  const feeLine = data.freeDelivery ? "free delivery" : data.deliveryFee ? `a ₦${data.deliveryFee} delivery fee` : "standard delivery rates";
+  function saveProduct(p: OnboardingProduct) {
+    const updated = isNew
+      ? [...form.products, p]
+      : form.products.map((x) => x.id === p.id ? p : x);
+    patch("products", updated);
+    setEditing(null);
+  }
 
-  const productList = [p0, p1, p2]
-    .filter(Boolean)
-    .map(p => `• ${p!.name} — ₦${p!.price}`)
-    .join("\n");
-
-  return [
-    [
-      { role: "customer", text: "Hello, what do you have?" },
-      { role: "ai", text: `Hi! Welcome to ${store} 👋 I'm ${ai}. We specialise in ${cat}. Are you looking for something specific, or shall I show you what's popular?` },
-    ],
-    [
-      { role: "customer", text: "Yes please, show me what you have" },
-      { role: "ai", text: `Sure! Here are some of our top picks:\n${productList || "• Check back soon — products coming!"}\n\nWould you like details on any of these?` },
-    ],
-    [
-      { role: "customer", text: p0 ? `Tell me more about the ${p0.name}` : "Tell me more about your products" },
-      { role: "ai", text: `${p0 ? `The ${p0.name} is priced at ₦${p0.price}. ` : ""}It's available and ready to ship. Would you like to order it?` },
-    ],
-    [
-      { role: "customer", text: "What about delivery?" },
-      { role: "ai", text: `We deliver to ${areas} with ${feeLine}. Orders are typically processed within 24 hours. Any other questions?` },
-    ],
-    [
-      { role: "customer", text: "I want to order" },
-      { role: "ai", text: `Awesome! Let me confirm your order. I'll open an order form for you now — just fill in your details and we'll get it sorted right away. Thank you for choosing ${store}! 🎉` },
-    ],
-  ];
-}
-
-const TEST_PILLS = ["Browse", "Products", "Product Q&A", "Delivery", "Order Intent"];
-
-function Step6({ data }: { data: FormData }) {
-  const exchanges = buildChat(data);
-  const [messages, setMessages] = useState<ChatMsg[]>([]);
-  const [typingIdx, setTypingIdx] = useState<number | null>(null);
-  const [done, setDone] = useState(0);
-  const bottomRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function run() {
-      for (let i = 0; i < exchanges.length; i++) {
-        await new Promise(r => setTimeout(r, i === 0 ? 400 : 500));
-        if (cancelled) return;
-        setMessages(prev => [...prev, exchanges[i][0]]);
-        await new Promise(r => setTimeout(r, 600));
-        if (cancelled) return;
-        setTypingIdx(i);
-        await new Promise(r => setTimeout(r, 1200));
-        if (cancelled) return;
-        setTypingIdx(null);
-        setMessages(prev => [...prev, exchanges[i][1]]);
-        setDone(i + 1);
-      }
-    }
-    run();
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, typingIdx]);
+  function removeProduct(id: string) {
+    patch("products", form.products.filter((p) => p.id !== id));
+  }
 
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-[22px] font-bold text-brand-navy">Meet your AI assistant</h2>
-        <p className="text-[14px] text-[#6B7280] mt-1">See exactly how your AI responds to customers before going live.</p>
+        <h2 className="text-[26px] font-bold text-[#212529]">Add your first products</h2>
+        <p className="text-[16px] text-[#6C757D] mt-1">Add at least one product to launch your store. You can add more later.</p>
       </div>
 
-      <div className="flex gap-1.5 flex-wrap">
-        {TEST_PILLS.map((label, i) => (
-          <span
-            key={label}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-medium transition-colors ${
-              i < done ? "bg-[#DCFCE7] text-[#16A34A]" : "bg-[#F3F4F6] text-[#9CA3AF]"
-            }`}
-          >
-            {i < done && <Check size={11} strokeWidth={2.5} />}
-            {label}
-          </span>
-        ))}
+      <div className="flex items-start gap-3 bg-[#EFF6FF] border border-[#BFDBFE] rounded-xl px-4 py-3">
+        <Info size={16} className="text-[#3B82F6] shrink-0 mt-0.5" />
+        <p className="text-[13px] text-[#1E40AF]">Your AI will automatically learn about every product you add, including prices, variants, and availability.</p>
       </div>
 
-      <div className="bg-[#E5DDD5] rounded-xl overflow-hidden">
-        <div className="h-[300px] overflow-y-auto p-3 space-y-2.5">
-          {messages.map((msg, idx) => (
-            <div key={idx} className={`flex ${msg.role === "customer" ? "justify-start" : "justify-end"}`}>
-              <div
-                className={`max-w-[78%] px-3 py-2 text-[13px] leading-relaxed whitespace-pre-line ${
-                  msg.role === "customer"
-                    ? "bg-white rounded-[12px_12px_12px_0]"
-                    : "bg-[#DCF8C6] rounded-[12px_12px_0_12px]"
-                }`}
-              >
-                {msg.text}
-                <p className="text-[10px] text-[#9CA3AF] mt-1 text-right">
-                  {new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
-                </p>
+      {form.products.length > 0 && (
+        <div className="space-y-2">
+          {form.products.map((p) => (
+            <div key={p.id} className="flex items-center gap-3 border border-[#DEE2E6] rounded-xl px-3 py-2.5">
+              <div className="w-10 h-10 rounded-lg bg-[#F1F3F5] flex items-center justify-center shrink-0 overflow-hidden">
+                {p.imageUrls ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={p.imageUrls.split(",")[0].trim()} alt={p.name} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-[18px]">📦</span>
+                )}
               </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[14px] font-semibold text-[#212529] truncate">{p.name}</p>
+                <p className="text-[12px] text-[#6C757D]">₦{p.price}</p>
+              </div>
+              <button type="button" onClick={() => openEdit(p)} className="text-[#ADB5BD] hover:text-brand-orange transition-colors">
+                <Edit2 size={15} />
+              </button>
+              <button type="button" onClick={() => removeProduct(p.id)} className="text-[#ADB5BD] hover:text-[#F44336] transition-colors">
+                <Trash2 size={15} />
+              </button>
             </div>
           ))}
-          {typingIdx !== null && (
-            <div className="flex justify-end">
-              <div className="bg-[#DCF8C6] rounded-[12px_12px_0_12px] px-3 py-2.5 flex gap-1 items-center">
-                {[0, 1, 2].map(i => (
-                  <span
-                    key={i}
-                    className="w-1.5 h-1.5 bg-[#6B7280] rounded-full animate-bounce"
-                    style={{ animationDelay: `${i * 150}ms` }}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-          <div ref={bottomRef} />
-        </div>
-      </div>
-
-      {done === exchanges.length && (
-        <div className="px-3 py-2 bg-[#F4EDE8] border-l-4 border-brand-orange rounded text-[13px] text-brand-navy font-medium">
-          Looking good! Your AI handled all 5 test scenarios. 🎉
         </div>
       )}
-      <p className="text-[12px] text-[#9CA3AF] text-center">
-        You can rerun this preview anytime from your dashboard under &quot;Test Your AI&quot;.
-      </p>
+
+      {editing ? (
+        <ProductForm product={editing} onSave={saveProduct} onCancel={() => setEditing(null)} />
+      ) : (
+        <button
+          type="button"
+          onClick={openNew}
+          className="w-full h-11 rounded-xl border-2 border-dashed border-brand-orange text-brand-orange text-[14px] font-semibold flex items-center justify-center gap-2 hover:bg-[#FBF0EB] transition-colors"
+        >
+          <Plus size={16} /> Add Product
+        </button>
+      )}
+
+      {form.products.length === 0 && !editing && (
+        <p className="text-[13px] text-[#D97706] text-center">
+          Add at least one product to continue.
+        </p>
+      )}
     </div>
   );
 }
 
-// ── Step 7 — Go Live ──────────────────────────────────────────────────────────
+// ── Step 4: Delivery ───────────────────────────────────────────────────────────
 
-function Step7({ data }: { data: FormData }) {
-  const slug = (data.businessName || "mystore").toLowerCase().replace(/[^a-z0-9]+/g, "") || "mystore";
-  const storeUrl = `merchat.io/${slug}`;
-  const statusMsg = `🎉 I've upgraded my store! Message me on my new number for faster service, easier ordering, and 24/7 availability: ${PROVISIONED_NUMBER}`;
-  const broadcastMsg = `Hi! I've moved my business to a new WhatsApp number with an AI assistant that can answer your questions and take orders anytime: ${PROVISIONED_NUMBER}. Save it now!`;
+function Step4({ form, patch }: { form: OnboardingForm; patch: (k: keyof OnboardingForm, v: unknown) => void }) {
+  function toggleState(s: string) {
+    const next = form.deliveryStates.includes(s)
+      ? form.deliveryStates.filter((x) => x !== s)
+      : [...form.deliveryStates, s];
+    patch("deliveryStates", next);
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <div className="flex justify-center mb-4">
-          <Rocket size={64} className="text-brand-orange animate-bounce" />
-        </div>
-        <h2 className="text-[26px] font-bold text-brand-navy">You&apos;re live! 🎉</h2>
-        <p className="text-[14px] text-[#6B7280] mt-1">Your AI is running. Share your store link and start getting orders.</p>
+    <div className="space-y-5">
+      <div>
+        <h2 className="text-[26px] font-bold text-[#212529]">Where do you deliver?</h2>
+        <p className="text-[16px] text-[#6C757D] mt-1">Customers outside your delivery areas will still be able to browse.</p>
       </div>
 
-      <div className="bg-[#F4EDE8] rounded-xl p-4">
-        <p className="text-[12px] font-semibold text-[#6B7280] uppercase tracking-wider mb-2">Your WhatsApp number</p>
-        <div className="flex items-center justify-between">
-          <p className="text-[22px] font-bold text-brand-orange">{PROVISIONED_NUMBER}</p>
-          <CopyButton text={PROVISIONED_NUMBER} />
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <label className="block text-[12px] font-semibold text-[#343A40]">States you deliver to</label>
+          <div className="flex gap-3">
+            <button type="button" onClick={() => patch("deliveryStates", [...NIGERIAN_STATES])} className="text-[12px] text-brand-orange font-medium">Select all</button>
+            <button type="button" onClick={() => patch("deliveryStates", [])} className="text-[12px] text-[#6C757D]">Clear all</button>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-y-2 gap-x-3 border border-[#DEE2E6] rounded-xl p-4 max-h-64 overflow-y-auto">
+          {NIGERIAN_STATES.map((s) => (
+            <label key={s} className="flex items-center gap-2 cursor-pointer">
+              <div
+                onClick={() => toggleState(s)}
+                className={`w-4 h-4 rounded border-2 shrink-0 flex items-center justify-center transition-colors cursor-pointer ${
+                  form.deliveryStates.includes(s) ? "bg-brand-orange border-brand-orange" : "border-[#DEE2E6]"
+                }`}
+              >
+                {form.deliveryStates.includes(s) && (
+                  <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                    <path d="M1 3.5l2.5 2.5L8 1" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </div>
+              <span className="text-[13px] text-[#343A40]">{s}</span>
+            </label>
+          ))}
+        </div>
+        {form.deliveryStates.length > 0 && (
+          <p className="text-[12px] text-brand-orange font-medium mt-2">{form.deliveryStates.length} state{form.deliveryStates.length !== 1 ? "s" : ""} selected</p>
+        )}
+      </div>
+
+      <div>
+        <label className="block text-[12px] font-semibold text-[#343A40] mb-1.5">Typical delivery time</label>
+        <div className="relative">
+          <select className={inputCls + " appearance-none pr-10"} value={form.deliveryTime} onChange={(e) => patch("deliveryTime", e.target.value)}>
+            <option value="">Select delivery time</option>
+            {DELIVERY_TIMES.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+          <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6C757D] pointer-events-none" />
         </div>
       </div>
 
-      <div className="bg-[#F3F4F6] rounded-xl p-4">
-        <p className="text-[12px] font-semibold text-[#6B7280] uppercase tracking-wider mb-2">Your storefront link</p>
-        <div className="flex items-center justify-between">
-          <p className="text-[15px] font-semibold text-brand-navy">{storeUrl}</p>
-          <CopyButton text={storeUrl} />
-        </div>
-        <a
-          href={`/${slug}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-[13px] text-brand-orange hover:opacity-75 transition-opacity mt-1 inline-block"
-        >
-          Open storefront →
-        </a>
+      <div>
+        <label className="block text-[12px] font-semibold text-[#343A40] mb-1.5">Delivery note</label>
+        <textarea
+          className={textareaCls}
+          rows={3}
+          placeholder="We use GIG Logistics for deliveries. Delivery fee is calculated at checkout."
+          value={form.deliveryNote}
+          onChange={(e) => patch("deliveryNote", e.target.value)}
+        />
+        <p className="text-[12px] text-[#6C757D] mt-1">This is shown to customers on your storefront.</p>
+      </div>
+    </div>
+  );
+}
+
+// ── Step 5: Payment ────────────────────────────────────────────────────────────
+
+const PAYMENT_OPTIONS = [
+  { id: "bank_transfer", icon: Building2, title: "Bank Transfer", body: "Customers transfer to your account. Most popular in Nigeria.", comingSoon: false },
+  { id: "pod", icon: Truck, title: "Pay on Delivery", body: "Customers pay cash when their order arrives.", comingSoon: false },
+  { id: "paystack", icon: CreditCard, title: "Paystack", body: "Accept cards, USSD, and bank transfers via Paystack.", comingSoon: true },
+  { id: "flutterwave", icon: CreditCard, title: "Flutterwave", body: "Accept global payments via Flutterwave.", comingSoon: true },
+];
+
+function Step5({ form, patch }: { form: OnboardingForm; patch: (k: keyof OnboardingForm, v: unknown) => void }) {
+  function toggleMethod(id: string) {
+    const methods = form.paymentMethods.includes(id)
+      ? form.paymentMethods.filter((m) => m !== id)
+      : [...form.paymentMethods, id];
+    patch("paymentMethods", methods);
+  }
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h2 className="text-[26px] font-bold text-[#212529]">How will you accept payment?</h2>
+        <p className="text-[16px] text-[#6C757D] mt-1">Select all that apply. You can update this anytime.</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {[
-          { label: "WhatsApp Status", text: statusMsg, iconBg: "bg-[#F4EDE8]", iconColour: "text-brand-orange", btnCls: "border-brand-orange text-brand-orange hover:bg-[#F4EDE8]", btnLabel: "Copy for WhatsApp Status" },
-          { label: "Broadcast",       text: broadcastMsg, iconBg: "bg-brand-navy/10", iconColour: "text-brand-navy",   btnCls: "border-brand-navy text-brand-navy hover:bg-[#F3F4F6]",   btnLabel: "Copy for Broadcast" },
-        ].map(({ label, text, iconBg, iconColour, btnCls, btnLabel }) => (
-          <div key={label} className="border-2 border-[#E5E7EB] rounded-xl p-4 flex flex-col">
-            <div className={`w-8 h-8 rounded-full ${iconBg} flex items-center justify-center mb-3 shrink-0`}>
-              <Rocket size={16} className={iconColour} />
+      <div className="space-y-3">
+        {PAYMENT_OPTIONS.map(({ id, icon: Icon, title, body, comingSoon }) => {
+          const selected = form.paymentMethods.includes(id);
+          return (
+            <div key={id}>
+              <button
+                type="button"
+                disabled={comingSoon}
+                onClick={() => !comingSoon && toggleMethod(id)}
+                className={`relative w-full text-left p-4 rounded-2xl border-2 transition-all ${
+                  selected
+                    ? "border-brand-orange bg-[#FBF0EB]"
+                    : comingSoon
+                    ? "border-[#DEE2E6] opacity-60 cursor-not-allowed"
+                    : "border-[#DEE2E6] hover:border-[#CED4DA]"
+                }`}
+              >
+                {selected && (
+                  <span className="absolute top-3 right-3 w-5 h-5 rounded-full bg-brand-orange flex items-center justify-center">
+                    <Check size={11} className="text-white" strokeWidth={3} />
+                  </span>
+                )}
+                {comingSoon && (
+                  <span className="absolute top-3 right-3 text-[11px] bg-[#F1F3F5] text-[#6C757D] px-2 py-0.5 rounded-full font-medium">Coming Soon</span>
+                )}
+                <div className="flex items-start gap-3">
+                  <Icon size={20} className={selected ? "text-brand-orange" : "text-[#6C757D]"} />
+                  <div>
+                    <p className="text-[14px] font-semibold text-[#212529]">{title}</p>
+                    <p className="text-[13px] text-[#6C757D] mt-0.5">{body}</p>
+                  </div>
+                </div>
+              </button>
+
+              {/* Bank Transfer expansion */}
+              {id === "bank_transfer" && selected && (
+                <div className="mt-2 ml-1 p-4 bg-[#F8F9FA] border border-[#DEE2E6] rounded-xl space-y-3">
+                  <div>
+                    <label className="block text-[12px] font-semibold text-[#343A40] mb-1.5">Bank name</label>
+                    <div className="relative">
+                      <select className={inputCls + " appearance-none pr-10"} value={form.bankName} onChange={(e) => patch("bankName", e.target.value)}>
+                        <option value="">Select bank</option>
+                        {NIGERIAN_BANKS.map((b) => <option key={b} value={b}>{b}</option>)}
+                      </select>
+                      <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6C757D] pointer-events-none" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[12px] font-semibold text-[#343A40] mb-1.5">Account number</label>
+                    <input className={inputCls} type="tel" placeholder="0123456789" maxLength={10} value={form.accountNumber} onChange={(e) => patch("accountNumber", e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-[12px] font-semibold text-[#343A40] mb-1.5">Account name</label>
+                    <input className={inputCls} placeholder="TUNDE OKAFOR" value={form.accountName} onChange={(e) => patch("accountName", e.target.value)} />
+                  </div>
+                </div>
+              )}
             </div>
-            <p className="text-[13px] font-semibold text-brand-navy mb-1">{label}</p>
-            <p className="text-[12px] text-[#6B7280] mb-3 leading-relaxed line-clamp-3 flex-1">{text}</p>
-            <button
-              type="button"
-              onClick={() => navigator.clipboard.writeText(text)}
-              className={`w-full py-2 rounded-lg border text-[12px] font-semibold transition-colors ${btnCls}`}
-            >
-              {btnLabel}
-            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Step 6: WhatsApp Connection ────────────────────────────────────────────────
+
+function Step6({ form, patch }: { form: OnboardingForm; patch: (k: keyof OnboardingForm, v: unknown) => void }) {
+  return (
+    <div className="space-y-5">
+      <div>
+        <h2 className="text-[26px] font-bold text-[#212529]">Connect your WhatsApp</h2>
+        <p className="text-[16px] text-[#6C757D] mt-1">Your AI needs a WhatsApp number to talk to your customers.</p>
+      </div>
+
+      <div className="space-y-2">
+        {[
+          { value: "existing", label: "I already have WhatsApp Business", desc: "Connect your existing WhatsApp Business number." },
+          { value: "setup", label: "Help me set it up", desc: "Our team will reach out within 24 hours to help you." },
+        ].map(({ value, label, desc }) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => patch("whatsappPath", value)}
+            className={`relative w-full text-left p-4 rounded-2xl border-2 transition-all ${
+              form.whatsappPath === value ? "border-brand-orange bg-[#FBF0EB]" : "border-[#DEE2E6] hover:border-[#CED4DA]"
+            }`}
+          >
+            {form.whatsappPath === value && (
+              <span className="absolute top-3 right-3 w-5 h-5 rounded-full bg-brand-orange flex items-center justify-center">
+                <Check size={11} className="text-white" strokeWidth={3} />
+              </span>
+            )}
+            <p className="text-[14px] font-semibold text-[#212529] pr-7">{label}</p>
+            <p className="text-[13px] text-[#6C757D] mt-0.5">{desc}</p>
+          </button>
+        ))}
+      </div>
+
+      {form.whatsappPath === "existing" ? (
+        <div>
+          <label className="block text-[12px] font-semibold text-[#343A40] mb-1.5">
+            Your WhatsApp Business number <span className="text-brand-orange">*</span>
+          </label>
+          <input
+            className={inputCls}
+            type="tel"
+            placeholder="+234 800 000 0000"
+            value={form.whatsappNumber}
+            onChange={(e) => patch("whatsappNumber", e.target.value)}
+          />
+          <p className="text-[12px] text-[#6C757D] mt-1">
+            This is the number customers will message. It should be a WhatsApp Business number.{" "}
+            <a href="https://business.whatsapp.com/" target="_blank" rel="noopener noreferrer" className="text-brand-orange">
+              How to set up WhatsApp Business →
+            </a>
+          </p>
+          <div className="flex items-center gap-2 mt-3">
+            <div className={`w-2 h-2 rounded-full ${form.whatsappNumber ? "bg-[#16A34A]" : "bg-[#ADB5BD]"}`} />
+            <span className={`text-[12px] ${form.whatsappNumber ? "text-[#16A34A]" : "text-[#ADB5BD]"}`}>
+              {form.whatsappNumber ? "Connected ✓" : "Not yet connected"}
+            </span>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-[#EFF6FF] border border-[#BFDBFE] rounded-xl px-4 py-3">
+          <p className="text-[13px] text-[#1E40AF]">
+            Our team will reach out within 24 hours to help you connect your WhatsApp Business account. You can continue and launch your store in the meantime.
+          </p>
+        </div>
+      )}
+
+      <div className="flex items-start gap-3 bg-[#F8F9FA] border border-[#DEE2E6] rounded-xl px-4 py-3">
+        <Shield size={16} className="text-brand-orange shrink-0 mt-0.5" />
+        <p className="text-[13px] text-[#343A40]">
+          Your customers will see <strong>your business name</strong> when your AI replies — not &quot;Merchat&quot;. Your brand stays front and centre.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ── Step 7: Review & Go Live ───────────────────────────────────────────────────
+
+function ReviewCard({ title, onEdit, children }: { title: string; onEdit: () => void; children: React.ReactNode }) {
+  return (
+    <div className="bg-white border border-[#DEE2E6] rounded-2xl p-5">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-[12px] font-semibold text-brand-orange uppercase tracking-wide">{title}</span>
+        <button type="button" onClick={onEdit} className="text-[13px] text-[#6C757D] hover:text-[#343A40] transition-colors">Edit</button>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Step7({ form, onGoToStep }: { form: OnboardingForm; onGoToStep: (s: number) => void }) {
+  const checks = [
+    { label: "Business info complete", ok: !!(form.businessName && form.businessType && form.businessPhone) },
+    { label: "At least 1 product added", ok: form.products.length > 0 },
+    { label: "Payment method selected", ok: form.paymentMethods.length > 0 },
+    { label: "Delivery area selected", ok: form.deliveryStates.length > 0 },
+    { label: "WhatsApp connected", ok: !!(form.whatsappNumber), warn: true },
+  ];
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h2 className="text-[26px] font-bold text-[#212529]">You&apos;re ready to launch! 🚀</h2>
+        <p className="text-[16px] text-[#6C757D] mt-1">Review your setup before going live.</p>
+      </div>
+
+      <div className="space-y-3">
+        <ReviewCard title="Business" onEdit={() => onGoToStep(1)}>
+          <p className="text-[14px] text-[#343A40]"><strong>{form.businessName}</strong></p>
+          <p className="text-[13px] text-[#6C757D] mt-0.5">{form.businessType} · {form.businessPhone}</p>
+        </ReviewCard>
+
+        <ReviewCard title="Store" onEdit={() => onGoToStep(2)}>
+          <p className="text-[14px] text-[#343A40]"><strong>{form.storeName}</strong></p>
+          <p className="text-[13px] text-brand-orange mt-0.5">merchat.io/store/{form.slug}</p>
+          {form.tagline && <p className="text-[13px] text-[#6C757D] mt-0.5 italic">&ldquo;{form.tagline}&rdquo;</p>}
+        </ReviewCard>
+
+        <ReviewCard title="Products" onEdit={() => onGoToStep(3)}>
+          <p className="text-[14px] text-[#343A40] font-medium">{form.products.length} product{form.products.length !== 1 ? "s" : ""} added</p>
+          <ul className="mt-1 space-y-0.5">
+            {form.products.slice(0, 3).map((p) => (
+              <li key={p.id} className="text-[13px] text-[#6C757D]">• {p.name}</li>
+            ))}
+            {form.products.length > 3 && (
+              <li className="text-[13px] text-[#6C757D]">• and {form.products.length - 3} more</li>
+            )}
+          </ul>
+        </ReviewCard>
+
+        <ReviewCard title="Delivery" onEdit={() => onGoToStep(4)}>
+          <p className="text-[13px] text-[#343A40]">{form.deliveryStates.length} state{form.deliveryStates.length !== 1 ? "s" : ""} · {form.deliveryTime || "Not set"}</p>
+        </ReviewCard>
+
+        <ReviewCard title="Payment" onEdit={() => onGoToStep(5)}>
+          <p className="text-[13px] text-[#343A40]">
+            {form.paymentMethods.map((m) =>
+              m === "bank_transfer" ? "Bank Transfer" : m === "pod" ? "Pay on Delivery" : m
+            ).join(", ")}
+          </p>
+        </ReviewCard>
+
+        <ReviewCard title="WhatsApp" onEdit={() => onGoToStep(6)}>
+          <p className="text-[13px] text-[#343A40]">
+            {form.whatsappPath === "setup"
+              ? "Team will assist with setup"
+              : form.whatsappNumber || "Not yet connected"}
+          </p>
+        </ReviewCard>
+      </div>
+
+      {/* Checklist */}
+      <div className="bg-[#F8F9FA] rounded-2xl p-4 space-y-2">
+        {checks.map(({ label, ok, warn }) => (
+          <div key={label} className="flex items-center gap-2">
+            {ok ? (
+              <CheckCircle size={16} className="text-[#16A34A] shrink-0" />
+            ) : warn ? (
+              <AlertCircle size={16} className="text-[#D97706] shrink-0" />
+            ) : (
+              <X size={16} className="text-[#F44336] shrink-0" />
+            )}
+            <span className={`text-[13px] ${ok ? "text-[#343A40]" : warn ? "text-[#D97706]" : "text-[#F44336]"}`}>{label}</span>
+            {!ok && warn && <span className="text-[12px] text-[#D97706]">(you can still launch)</span>}
           </div>
         ))}
       </div>
@@ -966,53 +1028,63 @@ function Step7({ data }: { data: FormData }) {
   );
 }
 
-// ── Saved screen ─────────────────────────────────────────────────────────────
+// ── Saved screen ───────────────────────────────────────────────────────────────
 
 function SavedScreen({ token, email, onBack }: { token: string; email: string; onBack: () => void }) {
   const [origin, setOrigin] = useState("");
   useEffect(() => { setOrigin(window.location.origin); }, []);
   const resumeLink = origin ? `${origin}/onboarding/resume/${token}` : `/onboarding/resume/${token}`;
+  const [copied, setCopied] = useState(false);
 
   return (
     <div className="flex flex-col items-center text-center gap-5 py-4">
-      <div className="w-16 h-16 rounded-full bg-[#DCFCE7] flex items-center justify-center">
-        <CheckCircle2 size={32} className="text-[#16A34A]" strokeWidth={2} />
+      <div className="w-16 h-16 rounded-full bg-[#FBF0EB] flex items-center justify-center animate-[pop_0.3s_ease-out]">
+        <Bookmark size={32} className="text-brand-orange" />
       </div>
       <div>
-        <h2 className="text-[22px] font-bold text-brand-navy mb-2">Your progress has been saved.</h2>
-        <p className="text-[15px] text-[#6B7280] leading-relaxed">
-          Resume your setup anytime using this link:
+        <h2 className="text-[24px] font-bold text-[#212529] mb-2">Progress saved!</h2>
+        <p className="text-[15px] text-[#6C757D] leading-relaxed">
+          You can continue setting up your store anytime using this link:
         </p>
       </div>
-      <div className="w-full bg-[#F3F4F6] rounded-lg px-4 py-3 flex items-center gap-2">
-        <span className="text-[12px] text-brand-navy truncate flex-1 text-left">{resumeLink || "Generating link…"}</span>
-        {resumeLink && <CopyButton text={resumeLink} />}
+      <div className="w-full bg-[#F8F9FA] border border-[#DEE2E6] rounded-xl px-4 py-3 flex items-center gap-2">
+        <span className="text-[12px] font-mono text-[#343A40] flex-1 text-left break-all">{resumeLink || "Generating…"}</span>
+        {resumeLink && (
+          <button
+            type="button"
+            onClick={() => { navigator.clipboard.writeText(resumeLink); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+            className="shrink-0 p-1.5 text-brand-orange hover:opacity-75 transition-opacity"
+            aria-label="Copy link"
+          >
+            {copied ? <Check size={20} /> : <Copy size={20} />}
+          </button>
+        )}
       </div>
-      <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-[#DCFCE7] border border-[#16A34A]/30 text-[13px] text-[#16A34A] font-medium w-full justify-center">
-        <Check size={15} strokeWidth={2.5} />
-        We&apos;ve sent this link to {email}
+      <div className="flex items-center gap-2 bg-[#F8F9FA] border border-[#DEE2E6] rounded-xl px-4 py-3 w-full">
+        <CheckCircle size={20} className="text-brand-orange shrink-0" />
+        <p className="text-[13px] text-[#6C757D]">We&apos;ve also sent this link to <strong className="text-[#343A40]">{email}</strong></p>
       </div>
-      <p className="text-[12px] text-[#9CA3AF]">This link expires in 7 days.</p>
+      <p className="text-[12px] text-[#ADB5BD]">This link expires in 7 days.</p>
       <button
         type="button"
         onClick={onBack}
-        className="text-[13px] text-[#6B7280] hover:text-brand-navy transition-colors"
+        className="w-full h-11 rounded-full bg-brand-orange text-white text-[14px] font-semibold hover:bg-brand-orange-hover transition-colors"
       >
-        ← Back to setup
+        Continue now
       </button>
+      <Link href="/" className="text-[13px] text-[#6C757D] hover:text-[#343A40] transition-colors">
+        Go to homepage
+      </Link>
     </div>
   );
 }
 
-// ── Main wizard ───────────────────────────────────────────────────────────────
+// ── Main wizard ────────────────────────────────────────────────────────────────
 
 function OnboardingWizard() {
   const searchParams = useSearchParams();
-  const fromWhatsapp = searchParams.get("source") === "whatsapp";
-  const waPhone = searchParams.get("phone") ?? "";
 
-  // Read saved progress from sessionStorage (written by the resume redirect route)
-  const [restored] = useState<{ step: number; form: Partial<FormData> } | null>(() => {
+  const [restored] = useState<{ step: number; form: Partial<OnboardingForm> } | null>(() => {
     if (typeof window === "undefined") return null;
     try {
       const raw = sessionStorage.getItem("onboarding_restore");
@@ -1023,265 +1095,290 @@ function OnboardingWizard() {
   });
 
   const [step, setStep] = useState(restored?.step ?? 1);
-  const [form, setForm] = useState<FormData>(() =>
-    restored ? { ...DEFAULT_FORM, ...(restored.form as FormData) } : { ...DEFAULT_FORM, phone: waPhone }
+  const [form, setForm] = useState<OnboardingForm>(() =>
+    restored ? { ...DEFAULT_FORM, ...(restored.form as OnboardingForm) } : { ...DEFAULT_FORM }
   );
-  const [provisioningDone, setProvisioningDone] = useState((restored?.step ?? 1) > 2);
   const [savingLater, setSavingLater] = useState(false);
-  const [nextLoading, setNextLoading] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedScreen, setSavedScreen] = useState<{ token: string; email: string } | null>(null);
+  const [launching, setLaunching] = useState(false);
+  const [launched, setLaunched] = useState(false);
 
-  async function saveAndContinueLater() {
+  void searchParams;
+
+  function patch(key: keyof OnboardingForm, value: unknown) {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  const canContinue = (() => {
+    switch (step) {
+      case 1: return !!(form.businessName && form.businessType && form.businessDescription && form.businessPhone);
+      case 2: return !!(form.storeName && form.slug && form.slug.length >= 3);
+      case 3: return form.products.length > 0;
+      case 4: return true; // delivery is optional
+      case 5: return form.paymentMethods.length > 0;
+      case 6: return form.whatsappPath === "setup" || !!form.whatsappNumber;
+      case 7: return !!(form.businessName && form.products.length > 0 && form.paymentMethods.length > 0);
+      default: return true;
+    }
+  })();
+
+  async function saveProgress(goToStep?: number) {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    if (step === 1) {
+      await supabase.from("merchants").update({
+        business_name: form.businessName,
+        phone: form.businessPhone,
+        category: form.businessType,
+        description: form.businessDescription,
+      }).eq("id", user.id);
+    } else if (step === 2) {
+      await supabase.from("merchants").update({
+        display_name: form.storeName,
+        slug: form.slug,
+        tagline: form.tagline,
+        brand_colour: form.accentColour,
+      }).eq("id", user.id);
+    } else if (step === 3) {
+      const valid = form.products.filter((p) => p.name && parseFloat(p.price) > 0);
+      if (valid.length > 0) {
+        await supabase.from("products").insert(
+          valid.map((p) => ({
+            merchant_id: user.id,
+            name: p.name,
+            price: parseFloat(p.price),
+            compare_at_price: p.compareAtPrice ? parseFloat(p.compareAtPrice) : null,
+            description: p.description,
+            image_urls: p.imageUrls ? p.imageUrls.split(",").map((u: string) => u.trim()).filter(Boolean) : [],
+            stock_quantity: parseInt(p.stockQuantity) || 1,
+            is_in_stock: true,
+            is_active: true,
+            pod_enabled: p.podEnabled,
+            category: p.category,
+          }))
+        );
+      }
+    }
+
+    if (goToStep !== undefined) setStep(goToStep);
+  }
+
+  async function next() {
+    if (!canContinue) return;
+    if (step === 7) {
+      setLaunching(true);
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase.from("merchants").update({
+            status: "active",
+            whatsapp_phone: form.whatsappNumber || null,
+            pod_enabled: form.paymentMethods.includes("pod"),
+            delivery_areas: form.deliveryStates,
+          }).eq("id", user.id);
+        }
+      } catch (err) {
+        console.error("Launch failed:", err);
+      } finally {
+        setLaunching(false);
+      }
+      setLaunched(true);
+      setTimeout(() => { window.location.href = "/dashboard"; }, 1500);
+      return;
+    }
+
+    try { await saveProgress(); } catch (err) { console.error(err); }
+    setStep((s) => s + 1);
+  }
+
+  async function handleSaveLater() {
     setSavingLater(true);
     setSaveError(null);
     try {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
-      const email = user?.email ?? form.email;
-      if (!email) {
-        setSaveError("Could not determine your email address. Please log in and try again.");
-        return;
-      }
+      const email = user?.email ?? "";
+      if (!email) { setSaveError("Could not determine your email. Please log in."); return; }
       const token = (crypto.randomUUID() + crypto.randomUUID()).replace(/-/g, "");
-      const formToSave = {
-        ...form,
-        logoPreview: null,
-        products: form.products.map(({ preview: _p, ...rest }) => rest),
-      };
+      const formToSave = { ...form, logoPreview: null };
       const { error } = await supabase.from("onboarding_sessions").insert({
-        token,
-        email,
-        step,
-        form_data: formToSave,
+        token, email, step, form_data: formToSave,
       });
       if (error) throw error;
       setSavedScreen({ token, email });
-      const resumeLink = `${window.location.origin}/onboarding/resume/${token}`;
-      const subject = encodeURIComponent("Complete your Merchat setup");
-      const body = encodeURIComponent(
-        `Hi${form.ownerName ? " " + form.ownerName : ""},\n\nYour Merchat setup is saved. Resume where you left off:\n\n${resumeLink}\n\nThis link expires in 7 days.\n\n— The Merchat Team`
-      );
-      window.open(`mailto:${email}?subject=${subject}&body=${body}`, "_blank");
     } catch (err) {
-      console.error("Failed to save progress:", err);
-      setSaveError("Something went wrong saving your progress. Please try again.");
+      console.error(err);
+      setSaveError("Something went wrong. Please try again.");
     } finally {
       setSavingLater(false);
     }
   }
 
-  function patch(key: keyof FormData, value: unknown) {
-    setForm(prev => {
-      if (key === "businessName" && typeof value === "string" && !prev.displayName) {
-        return { ...prev, businessName: value, displayName: value };
-      }
-      return { ...prev, [key]: value };
-    });
-  }
-
-  function patchHours(day: string, field: keyof DayHours, value: string | boolean) {
-    setForm(prev => ({
-      ...prev,
-      workingHours: {
-        ...prev.workingHours,
-        [day]: { ...prev.workingHours[day], [field]: value },
-      },
-    }));
-  }
-
-  const canContinue = (() => {
-    switch (step) {
-      case 1: return !!(form.businessName && form.ownerName && form.phone && form.category);
-      case 2: return provisioningDone;
-      case 3: return !!form.displayName;
-      case 4: return form.products.some(p => parseFloat(p.price) > 0);
-      case 5: return !!form.aiName;
-      default: return true;
-    }
-  })();
-
-  const ctaLabel =
-    step === 6 ? "Go live! 🚀" :
-    step === 7 ? "Go to my dashboard →" :
-    "Save & Continue →";
-
-  async function next() {
-    if (!canContinue) return;
-    if (step === 7) { window.location.href = "/dashboard"; return; }
-
-    setNextLoading(true);
-    try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        if (step === 1) {
-          await supabase.from("merchants").update({
-            business_name: form.businessName,
-            phone: form.phone,
-            category: form.category,
-          }).eq("id", user.id);
-        } else if (step === 3) {
-          const areas = form.deliveryAreas
-            ? form.deliveryAreas.split(",").map(s => s.trim()).filter(Boolean)
-            : [];
-          await supabase.from("merchants").update({
-            display_name: form.displayName,
-            description: form.description,
-            brand_colour: form.brandColour,
-            delivery_areas: areas,
-            delivery_fee: form.freeDelivery ? 0 : parseFloat(form.deliveryFee) || 0,
-            pod_enabled: form.paymentOnDelivery,
-          }).eq("id", user.id);
-        } else if (step === 4) {
-          const valid = form.products.filter(p => p.name && parseFloat(p.price) > 0);
-          if (valid.length > 0) {
-            await supabase.from("products").insert(
-              valid.map(p => ({
-                merchant_id: user.id,
-                name: p.name,
-                price: parseFloat(p.price),
-                stock_quantity: 99,
-                is_in_stock: true,
-                is_active: true,
-              }))
-            );
-          }
-        } else if (step === 6) {
-          await supabase.from("merchants").update({
-            provisioning_status: "active",
-          }).eq("id", user.id);
-        }
-      }
-    } catch (err) {
-      console.error("Onboarding step save failed:", err);
-    } finally {
-      setNextLoading(false);
-    }
-
-    setStep(s => s + 1);
-  }
-
   const progress = ((step - 1) / 6) * 100;
 
-  return (
-    <div className="min-h-screen bg-[#F3F4F6] flex flex-col">
-      {/* Top bar */}
-      <header className="fixed top-0 inset-x-0 z-50 h-14 bg-white border-b border-[#E5E7EB] flex items-center px-4 lg:px-6 gap-4">
-        <Link href="/" className="shrink-0">
-          <Image
-            src="/images/logo-light.svg"
-            alt="Merchat.io"
-            width={100}
-            height={19}
-            unoptimized
-            priority
-            style={{ width: 100, height: "auto" }}
-          />
-        </Link>
-        <div className="flex-1 min-w-0">
-          <div className="relative h-1 bg-[#E5E7EB] rounded-full overflow-hidden mb-1">
-            <div
-              className="absolute inset-y-0 left-0 bg-brand-orange rounded-full transition-all duration-500"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          <p className="text-[11px] text-[#6B7280] truncate">
-            Step {step} of 7 — {STEP_LABELS[step - 1]}
-          </p>
+  if (launched) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-center">
+          <div className="text-6xl mb-4">🎉</div>
+          <h1 className="text-[28px] font-bold text-[#212529] mb-2">Your store is live!</h1>
+          <p className="text-[16px] text-[#6C757D]">Taking you to your dashboard…</p>
         </div>
-        {step < 7 && (
-          <button
-            type="button"
-            onClick={saveAndContinueLater}
-            disabled={savingLater}
-            className="shrink-0 inline-flex items-center gap-1.5 text-[13px] text-[#6B7280] hover:text-brand-navy transition-colors disabled:opacity-40 whitespace-nowrap"
-          >
-            {savingLater && <Loader2 size={12} className="animate-spin" />}
-            Save and complete later
-          </button>
-        )}
-      </header>
+      </div>
+    );
+  }
 
-      {/* Body */}
-      <div className="flex-1 flex items-start lg:items-center justify-center pt-[80px] pb-8 px-4">
-        <div className="w-full max-w-[560px] bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.08)] px-6 pt-8 pb-6 lg:px-10 lg:pt-10">
+  return (
+    <div className="min-h-screen bg-white flex">
+      {/* Left sidebar — desktop only */}
+      <aside className="hidden lg:flex flex-col w-[280px] bg-[#F8F9FA] border-r border-[#DEE2E6] shrink-0">
+        <div className="px-8 pt-8 pb-6">
+          <Link href="/">
+            <Image src="/images/logo-dark.svg" alt="Merchat.io" width={140} height={23} unoptimized style={{ width: 140, height: "auto" }} />
+          </Link>
+        </div>
+        <nav className="flex-1 px-6 pb-8 overflow-y-auto">
+          {STEP_LABELS.map((label, i) => {
+            const n = i + 1;
+            const completed = n < step;
+            const current = n === step;
+            return (
+              <div key={n} className="flex items-start gap-3 mb-1">
+                <div className="flex flex-col items-center">
+                  <div
+                    className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[12px] font-bold transition-colors ${
+                      completed ? "bg-brand-orange" :
+                      current ? "bg-[#182E47]" :
+                      "bg-[#DEE2E6]"
+                    }`}
+                  >
+                    {completed ? (
+                      <Check size={12} className="text-white" strokeWidth={3} />
+                    ) : (
+                      <span className={current ? "text-white" : "text-[#ADB5BD]"}>{n}</span>
+                    )}
+                  </div>
+                  {i < STEP_LABELS.length - 1 && (
+                    <div className={`w-px flex-1 min-h-[20px] my-1 ${completed ? "bg-brand-orange" : "bg-[#DEE2E6]"}`} />
+                  )}
+                </div>
+                <span className={`pt-0.5 text-[13px] transition-colors pb-4 ${
+                  current ? "font-semibold text-[#212529]" :
+                  completed ? "text-[#6C757D]" :
+                  "text-[#ADB5BD]"
+                }`}>
+                  {label}
+                </span>
+              </div>
+            );
+          })}
+        </nav>
+      </aside>
 
-          {savedScreen ? (
-            <SavedScreen
-              token={savedScreen.token}
-              email={savedScreen.email}
-              onBack={() => setSavedScreen(null)}
-            />
-          ) : (
-          <>
-
-          {step === 1 && (
-            <Step1
-              data={form}
-              onChange={(k, v) => patch(k, v)}
-            />
-          )}
-          {step === 2 && (
-            <Step2 onDone={() => setProvisioningDone(true)} />
-          )}
-          {step === 3 && (
-            <Step3
-              data={form}
-              onChange={(k, v) => patch(k, v)}
-              onLogoChange={preview => patch("logoPreview", preview)}
-            />
-          )}
-          {step === 4 && (
-            <Step4
-              products={form.products}
-              onChange={products => setForm(prev => ({ ...prev, products }))}
-            />
-          )}
-          {step === 5 && (
-            <Step5
-              data={form}
-              onChange={(k, v) => patch(k, v)}
-              onHoursChange={patchHours}
-            />
-          )}
-          {step === 6 && <Step6 data={form} />}
-          {step === 7 && <Step7 data={form} />}
-
-          {/* Save error */}
-          {saveError && (
-            <div className="flex items-start gap-2 mt-6 px-3 py-2.5 rounded-lg bg-[#FEF2F2] border border-[#FCA5A5] text-[13px] text-[#EF4444]">
-              <AlertCircle size={15} className="shrink-0 mt-0.5" />
-              <span>{saveError}</span>
-            </div>
-          )}
-
-          {/* Bottom button row */}
-          <div className="flex items-center justify-between mt-6 pt-5 border-t border-[#E5E7EB] gap-3">
-            {step > 1 && step < 7 ? (
+      {/* Right content */}
+      <div className="flex-1 flex flex-col min-h-screen overflow-auto">
+        {/* Mobile progress bar */}
+        <div className="lg:hidden sticky top-0 z-10 bg-white border-b border-[#DEE2E6]">
+          <div className="h-1 bg-[#DEE2E6]">
+            <div className="h-full bg-brand-orange transition-all duration-500" style={{ width: `${progress}%` }} />
+          </div>
+          <div className="px-4 py-2 flex items-center justify-between">
+            <p className="text-[12px] text-[#6C757D]">Step {step} of 7 — {STEP_LABELS[step - 1]}</p>
+            {step < 7 && (
               <button
                 type="button"
-                onClick={() => setStep(s => s - 1)}
-                className="px-5 py-3 rounded-lg border border-[#D1D5DB] text-brand-navy text-[14px] font-semibold hover:bg-[#F3F4F6] transition-colors"
+                onClick={handleSaveLater}
+                disabled={savingLater}
+                className="text-[12px] text-[#6C757D] disabled:opacity-40"
               >
-                Back
+                {savingLater ? "Saving…" : "Save & continue later"}
               </button>
-            ) : (
-              <div />
             )}
+          </div>
+        </div>
+
+        {/* Desktop top bar */}
+        <div className="hidden lg:flex items-center justify-end px-10 pt-8 pb-0">
+          {step < 7 && (
             <button
               type="button"
-              onClick={next}
-              disabled={!canContinue || nextLoading}
-              className="flex-1 lg:flex-none lg:min-w-[180px] h-[50px] rounded-lg bg-brand-orange text-white text-[15px] font-semibold hover:bg-[#B54E20] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              onClick={handleSaveLater}
+              disabled={savingLater}
+              className="flex items-center gap-1.5 text-[14px] text-[#6C757D] hover:text-[#343A40] transition-colors disabled:opacity-40"
             >
-              {nextLoading && <Loader2 size={16} className="animate-spin" />}
-              {ctaLabel}
+              {savingLater && <Loader2 size={14} className="animate-spin" />}
+              Save &amp; continue later
             </button>
-          </div>
-
-          </>
           )}
+        </div>
+
+        {/* Form area */}
+        <div className="flex-1 flex items-start justify-start lg:justify-center px-6 py-8 lg:px-10">
+          <div className="w-full max-w-[560px]">
+            {savedScreen ? (
+              <SavedScreen token={savedScreen.token} email={savedScreen.email} onBack={() => setSavedScreen(null)} />
+            ) : (
+              <>
+                {step === 1 && <Step1 form={form} patch={patch} />}
+                {step === 2 && <Step2 form={form} patch={patch} />}
+                {step === 3 && <Step3 form={form} patch={patch} />}
+                {step === 4 && <Step4 form={form} patch={patch} />}
+                {step === 5 && <Step5 form={form} patch={patch} />}
+                {step === 6 && <Step6 form={form} patch={patch} />}
+                {step === 7 && <Step7 form={form} onGoToStep={setStep} />}
+
+                {saveError && (
+                  <div className="flex items-start gap-2 mt-6 px-4 py-3 rounded-xl bg-[#FFEBEE] border border-[#FFCDD2] text-[13px] text-[#F44336]">
+                    <AlertCircle size={15} className="shrink-0 mt-0.5" />
+                    <span>{saveError}</span>
+                  </div>
+                )}
+
+                {/* Navigation */}
+                <div className="flex items-center justify-between mt-8 pt-6 border-t border-[#DEE2E6] gap-3">
+                  {step > 1 ? (
+                    <button
+                      type="button"
+                      onClick={() => setStep((s) => s - 1)}
+                      className="px-5 h-11 rounded-full border border-[#DEE2E6] text-[#343A40] text-[14px] font-semibold hover:bg-[#F8F9FA] transition-colors"
+                    >
+                      Back
+                    </button>
+                  ) : (
+                    <div />
+                  )}
+
+                  {step === 3 && form.products.length === 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setStep((s) => s + 1)}
+                      className="text-[13px] text-[#ADB5BD] hover:text-[#6C757D] transition-colors mr-auto ml-3"
+                    >
+                      Skip for now
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={next}
+                    disabled={!canContinue || launching}
+                    className={`h-[60px] px-8 rounded-full text-white text-[15px] font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 ${
+                      step === 7
+                        ? "bg-brand-orange hover:bg-brand-orange-hover shadow-[0_0_20px_rgba(213,101,43,0.4)] min-w-[200px] justify-center"
+                        : "bg-brand-orange hover:bg-brand-orange-hover"
+                    }`}
+                  >
+                    {launching && <Loader2 size={16} className="animate-spin" />}
+                    {step === 7 ? "Launch My Store 🚀" : step === 6 ? "Review & Go Live →" : "Save & Continue →"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>
